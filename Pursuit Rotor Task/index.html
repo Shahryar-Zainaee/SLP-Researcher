@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Visual Tracking + Factor-Rich CSV (velocity + complexity + shapes)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg: #0f1115;
+      --fg: #e7ecf5;
+      --muted: #9fb0c7;
+      --border: #243040;
+      --target: #6cff9a;
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 20px
+    }
+
+    h1 {
+      font-size: 22px;
+      margin: 0 0 8px
+    }
+
+    p {
+      margin: 8px 0;
+      color: var(--muted)
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 10px 0 16px
+    }
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    input[type="number"],
+    input[type="text"],
+    textarea,
+    select {
+      width: 180px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0b0e16;
+      color: var(--fg)
+    }
+
+    textarea {
+      width: 380px;
+      height: 60px;
+      resize: vertical
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: #111827;
+      color: var(--fg);
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed
+    }
+
+    canvas {
+      display: block;
+      background: #0b0e16;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-top: 8px
+    }
+
+    .meta {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px
+    }
+
+    .badge {
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>Visual Tracking Task (grid‑aligned sampling → one row per time point)</h1>
+    <p>Follow the dot. Sampling occurs exactly at each period (e.g., every 100 ms). Choose the path shape, velocity, and
+      complexity. All factors are columns in the CSV.</p>
+
+    <div class="row">
+      <label>Participant ID: <input id="pid" type="text" placeholder="e.g., S01"></label>
+      <label>Condition: <input id="cond" type="text" placeholder="e.g., Baseline"></label>
+      <label>Trials: <input id="nTrials" type="number" min="1" max="200" value="3"></label>
+      <label>Duration (s): <input id="duration" type="number" min="1" max="120" step="1" value="6"></label>
+      <label>Sampling period (ms): <input id="sampleMs" type="number" min="5" max="1000" step="5" value="100"></label>
+    </div>
+
+    <div class="row">
+      <label>Path:
+        <select id="path">
+          <option>Line</option>
+          <option selected>Circle</option>
+          <option>Ellipse</option>
+          <option>Figure8</option>
+          <option>Lissajous</option>
+          <option>Zigzag</option>
+          <option>Spiral</option>
+        </select>
+      </label>
+      <label>Velocity (×): <input id="vel" type="number" min="0.2" max="5" step="0.1" value="1.0"></label>
+      <label>Complexity (1–5): <input id="complex" type="number" min="1" max="5" step="1" value="1"></label>
+    </div>
+
+    <div class="row" style="align-items:flex-start">
+      <label style="flex:1 1 380px">Factors (key=value, comma‑separated):
+        <textarea id="factors" placeholder="Group=A, Task=Baseline, Hand=Right"></textarea>
+      </label>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button id="startBtn">Start</button>
+        <button id="cancelBtn" disabled>Cancel</button>
+        <button id="downloadSummaryBtn" disabled>Download Summary CSV</button>
+        <button id="downloadSamplesBtn" disabled>Download Samples CSV</button>
+      </div>
+    </div>
+
+    <canvas id="board" width="720" height="360"></canvas>
+    <div class="meta">
+      <div class="badge">Trial: <span id="trialNum">0</span></div>
+      <div class="badge">Time left: <span id="timeLeft">0.0</span>s</div>
+      <div class="badge">Mean error: <span id="errNow">—</span> px</div>
+      <div class="badge">Sampling: <span id="srBadge">10</span> Hz</div>
+    </div>
+
+    <p id="status"></p>
+  </div>
+
+  <script>
+    (() => {
+      // Elements
+      const canvas = document.getElementById('board');
+      const ctx = canvas.getContext('2d');
+      const startBtn = document.getElementById('startBtn');
+      const cancelBtn = document.getElementById('cancelBtn');
+      const dlSummaryBtn = document.getElementById('downloadSummaryBtn');
+      const dlSamplesBtn = document.getElementById('downloadSamplesBtn');
+      const nTrialsEl = document.getElementById('nTrials');
+      const durEl = document.getElementById('duration');
+      const sampleMsEl = document.getElementById('sampleMs');
+      const pidEl = document.getElementById('pid');
+      const condEl = document.getElementById('cond');
+      const factorsEl = document.getElementById('factors');
+      const pathEl = document.getElementById('path');
+      const velEl = document.getElementById('vel');
+      const complexEl = document.getElementById('complex');
+      const trialNumEl = document.getElementById('trialNum');
+      const timeLeftEl = document.getElementById('timeLeft');
+      const errNowEl = document.getElementById('errNow');
+      const srBadgeEl = document.getElementById('srBadge');
+      const statusEl = document.getElementById('status');
+
+      // State
+      let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+      let target = { x: 0, y: 0, r: 12 };
+      let raf = null;
+      let startTime = 0;
+      let trialEndTime = 0;
+      let trialIdx = 0;
+      let running = false;
+      let samples = [];
+      let sampleEveryMs = 100;
+      let nextSampleAt = 0;
+      let currentTrialLabel = "";
+
+      // CSV stores
+      let summaryRows = [];
+      let sampleRows = [];
+
+      // Cursor tracking
+      canvas.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+      });
+
+      startBtn.addEventListener('click', () => {
+        if (running) return;
+
+        const pid = (pidEl.value || '').trim() || crypto.randomUUID().slice(0, 8);
+        const cond = (condEl.value || '').trim() || 'NA';
+        const factorMap = parseFactors((factorsEl.value || '').trim());
+        const factorCols = Object.keys(factorMap);
+
+        summaryRows = [[
+          "ParticipantID", "Condition", "Trial", "TrialLabel",
+          "Duration_s", "SamplePeriod_ms", "SampleRate_Hz",
+          "CanvasW", "CanvasH", "DevicePixelRatio",
+          "Path", "VelocityMult", "ComplexityLevel",
+          "A_px", "B_px", "R_px", "fx_Hz", "fy_Hz", "phase_rad",
+          ...factorCols.map(k => `Factor_${k}`),
+          "MeanError_px", "MedianError_px", "N_Samples", "ISO_EndTime"
+        ]];
+
+        sampleRows = [[
+          "ParticipantID", "Condition", "Trial", "TrialLabel",
+          "Duration_s", "SamplePeriod_ms", "SampleRate_Hz",
+          "CanvasW", "CanvasH", "DevicePixelRatio",
+          "Path", "VelocityMult", "ComplexityLevel",
+          "A_px", "B_px", "R_px", "fx_Hz", "fy_Hz", "phase_rad",
+          ...factorCols.map(k => `Factor_${k}`),
+          "SampleIndex", "t_s", "t_ms",
+          "TargetX", "TargetY", "MouseX", "MouseY", "Error_px", "ISO_Timestamp"
+        ]];
+
+        STATE.participant = pid;
+        STATE.condition = cond;
+        STATE.factors = factorMap;
+        STATE.factorCols = factorCols;
+
+        trialIdx = 0;
+        statusEl.textContent = '';
+        dlSummaryBtn.disabled = true;
+        dlSamplesBtn.disabled = true;
+
+        sampleEveryMs = clamp(parseInt(sampleMsEl.value || "100", 10), 5, 1000);
+        srBadgeEl.textContent = Math.round(1000 / sampleEveryMs);
+
+        runNextTrial();
+      });
+
+      dlSummaryBtn.addEventListener('click', () => downloadCSV("tracking_summary.csv", toCSV(summaryRows)));
+      dlSamplesBtn.addEventListener('click', () => downloadCSV("tracking_samples.csv", toCSV(sampleRows)));
+
+      // Cancel via button or Esc
+      cancelBtn.addEventListener('click', cancelRun);
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') cancelRun();
+      });
+
+      const STATE = { participant: "", condition: "", factors: {}, factorCols: [] };
+
+      function cancelRun() {
+        if (!running) return;
+        running = false;
+        if (raf) cancelAnimationFrame(raf);
+
+        // Discard partial trial's sample rows
+        sampleRows = sampleRows.filter((row, i) => i === 0 || row[2] !== trialIdx);
+
+        // Reset UI
+        startBtn.disabled = false;
+        cancelBtn.disabled = true;
+        errNowEl.textContent = "—";
+        timeLeftEl.textContent = "0.0";
+        statusEl.textContent = `Canceled during ${currentTrialLabel}. Partial data discarded; previous trials preserved.`;
+
+        // Enable downloads if we have any finished trials
+        const hasSummary = summaryRows.length > 1;
+        const hasSamples = sampleRows.length > 1;
+        dlSummaryBtn.disabled = !hasSummary;
+        dlSamplesBtn.disabled = !hasSamples;
+
+        trialNumEl.textContent = "—";
+        drawScene(canvas.width / 2, canvas.height / 2);
+      }
+
+      function runNextTrial() {
+        const nTrials = clamp(parseInt(nTrialsEl.value || "3", 10), 1, 200);
+        const durSec = clamp(parseFloat(durEl.value || "6"), 1, 120);
+
+        if (trialIdx >= nTrials) {
+          running = false;
+          startBtn.disabled = false;
+          cancelBtn.disabled = true;
+          const hasData = summaryRows.length > 1;
+          dlSummaryBtn.disabled = !hasData;
+          dlSamplesBtn.disabled = sampleRows.length <= 1;
+          statusEl.textContent = "All trials complete. Download your CSV files.";
+          trialNumEl.textContent = "—";
+          timeLeftEl.textContent = "0.0";
+          return;
+        }
+
+        trialIdx++;
+        running = true;
+        startBtn.disabled = true;
+        cancelBtn.disabled = true; // will enable after frame starts to avoid race
+        trialNumEl.textContent = String(trialIdx);
+        samples = [];
+
+        // Timing
+        startTime = performance.now();
+        trialEndTime = startTime + durSec * 1000;
+        nextSampleAt = startTime; // start at t=0
+
+        currentTrialLabel = `T${trialIdx.toString().padStart(2, "0")}`;
+        statusEl.textContent = `Running ${currentTrialLabel}…`;
+
+        // Path + velocity + complexity
+        const path = pathEl.value;
+        const velMult = clamp(parseFloat(velEl.value || "1.0"), 0.2, 5);
+        const cLevel = clamp(parseInt(complexEl.value || "1", 10), 1, 5);
+
+        // Geometry & base params
+        const A = Math.round(canvas.height * 0.30);
+        const B = Math.round(canvas.width * 0.40);
+        const R = Math.round(Math.min(A, B));
+        const baseF = 0.25; // Hz baseline
+        const phase = Math.random() * Math.PI * 2;
+
+        // Lissajous ratios by complexity
+        const ratios = [[1, 1], [1, 2], [2, 3], [3, 4], [3, 5], [5, 7]];
+        const [rx, ry] = ratios[Math.min(cLevel, ratios.length - 1)];
+        const fx = baseF * rx * velMult;
+        const fy = baseF * ry * velMult;
+
+        const env = {
+          Duration_s: durSec,
+          SamplePeriod_ms: sampleEveryMs,
+          SampleRate_Hz: Math.round(1000 / sampleEveryMs),
+          CanvasW: canvas.width, CanvasH: canvas.height,
+          DevicePixelRatio: (window.devicePixelRatio || 1),
+          Path: path, VelocityMult: velMult, ComplexityLevel: cLevel,
+          A_px: A, B_px: B, R_px: R,
+          fx_Hz: fx, fy_Hz: fy, phase_rad: phase,
+          cx: canvas.width / 2, cy: canvas.height / 2, baseF
+        };
+
+        function frame(now) {
+          if (!running) return;
+
+          cancelBtn.disabled = false; // safe to allow cancel during active trial
+
+          // draw position uses current time
+          const t_now = (now - startTime) / 1000;
+          const p_now = pathPosition(t_now, env);
+          target.x = p_now.x; target.y = p_now.y;
+
+          // grid-aligned sampling
+          while (now >= nextSampleAt && nextSampleAt <= trialEndTime) {
+            const t_ms = Math.round(nextSampleAt - startTime);
+            const t_s = t_ms / 1000;
+            const pos = pathPosition(t_s, env);
+
+            const mx = mouse.x, my = mouse.y;
+            const err = Math.hypot(mx - pos.x, my - pos.y);
+
+            const base = [
+              STATE.participant, STATE.condition, trialIdx, currentTrialLabel,
+              env.Duration_s, env.SamplePeriod_ms, env.SampleRate_Hz,
+              env.CanvasW, env.CanvasH, env.DevicePixelRatio,
+              env.Path, env.VelocityMult, env.ComplexityLevel,
+              env.A_px, env.B_px, env.R_px, env.fx_Hz, env.fy_Hz, env.phase_rad,
+              ...STATE.factorCols.map(k => safeVal(STATE.factors[k]))
+            ];
+
+            sampleRows.push([
+              ...base,
+              samples.length, round(t_s, 3), t_ms,
+              round(pos.x, 2), round(pos.y, 2), round(mx, 2), round(my, 2),
+              round(err, 2), new Date().toISOString()
+            ]);
+
+            samples.push(err);
+            nextSampleAt += sampleEveryMs;
+          }
+
+          // Live mean
+          errNowEl.textContent = samples.length
+            ? (samples.reduce((a, b) => a + b, 0) / samples.length).toFixed(1)
+            : "—";
+
+          drawScene(target.x, target.y);
+          const leftMs = Math.max(0, trialEndTime - now);
+          timeLeftEl.textContent = (leftMs / 1000).toFixed(1);
+
+          if (now >= trialEndTime && nextSampleAt > trialEndTime) {
+            finishTrial(env, currentTrialLabel);
+            runNextTrial();
+          } else {
+            raf = requestAnimationFrame(frame);
+          }
+        }
+        raf = requestAnimationFrame(frame);
+
+        function finishTrial(env, trialLabel) {
+          running = false;
+          if (raf) cancelAnimationFrame(raf);
+
+          const meanErr = samples.length ? samples.reduce((a, b) => a + b, 0) / samples.length : NaN;
+          const medianErr = medianOf(samples) ?? NaN;
+
+          const summaryBase = [
+            STATE.participant, STATE.condition, trialIdx, trialLabel,
+            env.Duration_s, env.SamplePeriod_ms, env.SampleRate_Hz,
+            env.CanvasW, env.CanvasH, env.DevicePixelRatio,
+            env.Path, env.VelocityMult, env.ComplexityLevel,
+            env.A_px, env.B_px, env.R_px, env.fx_Hz, env.fy_Hz, env.phase_rad,
+            ...STATE.factorCols.map(k => safeVal(STATE.factors[k]))
+          ];
+
+          summaryRows.push([
+            ...summaryBase,
+            round(meanErr, 2), round(medianErr, 2), samples.length,
+            new Date().toISOString()
+          ]);
+        }
+      }
+
+      // ---- Path generator ----
+      function pathPosition(t, env) {
+        const { cx, cy, A_px: A, B_px: B, R_px: R, fx_Hz: fx, fy_Hz: fy, phase_rad: ph, Path, ComplexityLevel: c, Duration_s: dur } = env;
+        const w = 2 * Math.PI;
+        const saw = (x) => 2 * (x - Math.floor(x + 0.5)); // -1..1
+        const clampXY = (x, y) => ({ x: Math.max(0, Math.min(canvas.width, x)), y: Math.max(0, Math.min(canvas.height, y)) });
+        switch (Path) {
+          case "Line": {
+            const f = fx * (1 + 0.5 * (c - 1));
+            const x = cx + B * saw(f * t);
+            const y = cy;
+            return clampXY(x, y);
+          }
+          case "Circle": {
+            const x = cx + R * Math.cos(w * fx * t + ph);
+            const y = cy + R * Math.sin(w * fx * t + ph);
+            return clampXY(x, y);
+          }
+          case "Ellipse": {
+            const x = cx + B * Math.cos(w * fx * t + ph);
+            const y = cy + A * Math.sin(w * fy * t);
+            return clampXY(x, y);
+          }
+          case "Figure8": {
+            const f = fx * (1 + 0.5 * (c - 1));
+            const s = Math.sin(w * f * t + ph);
+            const x = cx + B * s;
+            const y = cy + A * s * Math.cos(w * f * t + ph);
+            return clampXY(x, y);
+          }
+          case "Lissajous": {
+            const x = cx + B * Math.sin(w * fx * t + ph);
+            const y = cy + A * Math.sin(w * fy * t);
+            return clampXY(x, y);
+          }
+          case "Zigzag": {
+            const f = fx * (1 + 0.7 * (c - 1));
+            const x = cx + B * saw(f * t);
+            const y = cy + A * Math.sin(w * fy * t);
+            return clampXY(x, y);
+          }
+          case "Spiral": {
+            const k = 0.6 + 0.2 * (c - 1); // radial growth factor
+            const r = Math.min(R, R * Math.pow(Math.min(t / dur, 1), k));
+            const x = cx + r * Math.cos(w * fx * t + ph);
+            const y = cy + r * Math.sin(w * fx * t + ph);
+            return clampXY(x, y);
+          }
+          default: {
+            const x = cx + B * Math.sin(w * fx * t + ph);
+            const y = cy + A * Math.sin(w * fy * t);
+            return clampXY(x, y);
+          }
+        }
+      }
+
+      function drawScene(x, y) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Crosshair at mouse
+        ctx.globalAlpha = 0.8;
+        ctx.strokeStyle = "#243040";
+        ctx.beginPath();
+        ctx.moveTo(mouse.x, 0); ctx.lineTo(mouse.x, canvas.height);
+        ctx.moveTo(0, mouse.y); ctx.lineTo(canvas.width, mouse.y);
+        ctx.stroke();
+
+        // Target
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#6cff9a";
+        ctx.beginPath();
+        ctx.arc(x, y, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glow
+        ctx.globalAlpha = 0.2;
+        ctx.beginPath();
+        ctx.arc(x, y, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // Helpers
+      function parseFactors(text) {
+        const map = {};
+        if (!text) return map;
+        text.split(/[,;\n]/).forEach(pair => {
+          const [k, ...rest] = pair.split('=');
+          if (!k) return;
+          const key = k.trim();
+          const val = rest.join('=').trim();
+          if (key) map[key] = val || '';
+        });
+        return map;
+      }
+      function downloadCSV(filename, text) {
+        const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        URL.revokeObjectURL(url); a.remove();
+      }
+      function toCSV(rows) {
+        const esc = v => {
+          const s = String(v ?? "");
+          return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        return rows.map(r => r.map(esc).join(",")).join("\n");
+      }
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const medianOf = arr => {
+        if (!arr.length) return null;
+        const a = [...arr].sort((x, y) => x - y);
+        const m = Math.floor(a.length / 2);
+        return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+      };
+      const round = (x, n) => Number.isFinite(x) ? Number(x.toFixed(n)) : "";
+      const safeVal = v => (v === undefined || v === null) ? "" : v;
+
+      // Initial UI
+      srBadgeEl.textContent = Math.round(1000 / parseInt(sampleMsEl.value, 10));
+      drawScene(canvas.width / 2, canvas.height / 2);
+    })();
+  </script>
+</body>
+
+</html>
