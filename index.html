@@ -1,0 +1,158 @@
+<!-- this script is for the menu page -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Gadgets for Speech & Language Pathology Education</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #01002E;
+      color: #fff;
+      margin: 0;
+      padding: 1em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin-top: 2em;
+      text-align: left;
+      font-size: 2em;
+      margin-bottom: 0.5em;
+      width: 800px;
+      line-height: 2;
+      /* 1.0 = default, higher = more space */
+    }
+
+    p {
+      margin-top: 3em;
+      text-align: center;
+      max-width: 600px;
+      font-size: 1.7em;
+      /* increase/decrease as needed */
+    }
+
+    h2 {
+      margin-top: 2em;
+      color: #ffffff;
+      font-size: 1.8em;
+      border: 1px solid #ffffff;
+      /* border on all four sides */
+      padding: 0.6em 1.2em;
+      /* top/bottom padding 0.6em, left/right padding 1.2em */
+      text-align: center;
+      border-radius: 6px;
+      /* optional rounded corners */
+    }
+
+
+    ul {
+      list-style: none;
+      padding: 0;
+      max-width: 600px;
+      /* optional overall course list width */
+      width: 100%;
+    }
+
+    li {
+      margin: 1em 0;
+      text-align: left;
+      /* align gadget names to the left */
+      max-width: 600px;
+      /* limit name width */
+      overflow-wrap: normal;
+      /* don't force breaks inside words */
+      white-space: normal;
+      /* allow wrapping */
+    }
+
+
+    a {
+      color: #ff9900;
+      text-decoration: none;
+      font-size: 1.7em;
+      font-weight: bold;
+      /* makes the text bold */
+      display: inline-block;
+      padding: 0.3em 0.6em;
+      border-radius: 5px;
+      transition: background 0.3s;
+    }
+
+
+    a:hover {
+      background: rgba(0, 229, 255, 0.15);
+      /* orange with 15% opacity */
+      text-decoration: underline;
+    }
+
+    /* Responsive adjustments for small screens */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 1.4em;
+        /* Reduce from 2em to keep it readable but compact */
+        width: 100%;
+        /* Let it take full mobile width */
+        line-height: 1.5;
+        /* Slightly tighter spacing for mobile */
+        margin-top: 1em;
+        /* Reduce top margin so it doesn't push content too far down */
+      }
+
+      @media (max-width: 600px) {
+        p {
+          margin-top: 2em;
+          /* slightly less margin for small screens */
+          text-align: center;
+          max-width: 90%;
+          /* let it scale with screen width */
+          font-size: 1.3em;
+          /* smaller than 1.7em so it fits better on mobile */
+        }
+      }
+
+
+      h2 {
+        font-size: 1.3em;
+        /* Reduce from 1.8em to fit on smaller screens */
+        padding: 0.5em 0.8em;
+        /* Reduce padding slightly so border boxes don't feel huge */
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>
+    Dear researchers,<br>
+    The following tools have been prepared to help you with research about Speech &amp; Language Pathology!
+    Proper citations have been made wehever I adapted a script from others work. I hope they make your research
+    experience enjoyable.<br>
+    Regards,<br>
+    Shahryar Zainaee
+  </h1>
+  <p>Select a gadget to proceed:</p>
+
+
+  <!-- ================== Rotor task set with webgaze ================== -->
+  <h2>VVVVV</h2>
+  <ul>
+    <li><a href="Pursuit Rotor Task/index.html">Pursuit Rotor Task + Eye Tracking (WebGaze)</a></li>
+    <!-- 💡 ADD MORE "tools" BELOW -->
+    <!-- Example:
+    <li><a href="VocalTractResonance/index.html">Vocal Tract Resonance Simulation</a></li>
+    -->
+  </ul>
+
+  <!-- ================== more categoriez ================== -->
+  <!-- 💡 HOW TO ADD A NEW topic:
+    1. Copy the <h2> ... </h2> and <ul> ... </ul> block above.
+    2. Replace the course name in <h2> with your new job title.
+    3. Add the gadget links in <li> ... </li> format inside the <ul>.
+  -->
+</body>
+
+</html>
