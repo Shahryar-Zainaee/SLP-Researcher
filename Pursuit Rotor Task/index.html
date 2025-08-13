@@ -1,13 +1,46 @@
-<!--- this script is still under preparation --->
+<!--
+Pursuit Rotor Task with WebGazer.js (single file)
+===============================================================================
+HOW TO USE (quick start)
+1) Host this file over HTTPS (required by browsers for camera). Easy options:
+   - GitHub Pages (https://username.github.io/repo/) or a local HTTPS dev server.
+2) Open the page, click "Enable Camera", allow camera permission.
+3) Optional: use "Diagnose" to check HTTPS, permissions, and devices.
+4) Set trials, duration, and sampling period (in milliseconds). The app samples
+   exactly on a fixed grid (e.g., every 100 ms).
+5) Click "Start". Move your mouse to follow the green dot. WebGazer will add an
+   estimated gaze (x, y) at each sample when available.
+6) After all trials, download the Summary CSV and the per-sample CSV.
+
+PRIVACY
+- WebGazer runs in the browser. No video is sent to a server by this page.
+- This page logs cursor coordinates, target coordinates, and WebGazer’s gaze
+  estimate if available. It writes CSV files to your computer via download.
+- If you embed this in an LMS iframe (e.g., Canvas), camera can be blocked.
+  A helper "Open in new tab" button appears when embedded.
+
+CITATION (include in your materials)
+- Papoutsaki, A., Sangkloy, P., Laskey, J., Daskalova, N., Huang, J., & Hays, J. (2016).
+  WebGazer: Scalable Webcam Eye Tracking Using User Interactions. IJCAI-16.
+- Project: https://webgazer.cs.brown.edu
+- If you publish/redistribute, review WebGazer’s GPLv3 license and attribution.
+
+CHANGES MADE
+- Added step-by-step comments throughout (HTML, CSS, JS).
+- Added visible “References” and “Attribution” box in the UI.
+- Kept the sampling period in milliseconds; the loop aligns samples to the grid.
+===============================================================================
+-->
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8" />
   <title>Pursuit Rotor Task — WebGazer (single file)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <style>
+    /* ==== STEP 1: Theme and base layout ==== */
     :root {
       --bg: #0f1115;
       --fg: #e7ecf5;
@@ -16,201 +49,91 @@
       --target: #6cff9a;
       --accent: #7aa2ff;
     }
-
-    html,
-    body {
-      margin: 0;
-      height: 100%;
-      background: var(--bg);
-      color: var(--fg);
-      font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif
+    html, body {
+      margin: 0; height: 100%;
+      background: var(--bg); color: var(--fg);
+      font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif;
     }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    p { margin: 8px 0; color: var(--muted); }
 
-    .wrap {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 20px
-    }
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 10px 0 16px; }
+    label { display: flex; align-items: center; gap: 6px; }
 
-    h1 {
-      font-size: 22px;
-      margin: 0 0 8px
+    input[type="number"], input[type="text"], textarea, select {
+      width: 180px; padding: 6px 8px; border-radius: 8px;
+      border: 1px solid var(--border); background: #0b0e16; color: var(--fg);
     }
-
-    p {
-      margin: 8px 0;
-      color: var(--muted)
-    }
-
-    .row {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin: 10px 0 16px
-    }
-
-    label {
-      display: flex;
-      align-items: center;
-      gap: 6px
-    }
-
-    input[type="number"],
-    input[type="text"],
-    textarea,
-    select {
-      width: 180px;
-      padding: 6px 8px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #0b0e16;
-      color: var(--fg)
-    }
-
-    textarea {
-      width: 380px;
-      height: 60px;
-      resize: vertical
-    }
+    textarea { width: 380px; height: 60px; resize: vertical; }
 
     button {
-      border: 1px solid var(--border);
-      background: #111827;
-      color: var(--fg);
-      padding: 10px 14px;
-      border-radius: 10px;
-      cursor: pointer
+      border: 1px solid var(--border); background: #111827; color: var(--fg);
+      padding: 10px 14px; border-radius: 10px; cursor: pointer;
     }
+    button:disabled { opacity: .5; cursor: not-allowed; }
 
-    button:disabled {
-      opacity: .5;
-      cursor: not-allowed
-    }
+    .stack { display: grid; place-items: center; position: relative; }
+    canvas { display: block; border: 1px solid var(--border); border-radius: 12px; background: #0b0e16; }
+    #board { margin-top: 8px; }
 
-    .stack {
-      display: grid;
-      place-items: center;
-      position: relative
-    }
+    .meta { display: flex; gap: 16px; margin-top: 8px; color: var(--muted); font-size: 14px; }
+    .badge { padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; }
+    .pill  { border: 1px solid var(--border); border-radius: 999px; padding: 4px 8px; }
 
-    canvas {
-      display: block;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #0b0e16
-    }
+    .hint { font-size: 12px; color: var(--muted); }
+    .ok { color: #6cff9a; } .warn { color: #ffb86b; } .err { color: #ff6b6b; }
 
-    #board {
-      margin-top: 8px
-    }
+    .cambox { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+    .cap { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
-    .meta {
-      display: flex;
-      gap: 16px;
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 14px
-    }
-
-    .badge {
-      padding: 2px 8px;
-      border: 1px solid var(--border);
-      border-radius: 999px
-    }
-
-    .pill {
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 4px 8px
-    }
-
-    .hint {
-      font-size: 12px;
-      color: var(--muted)
-    }
-
-    .ok {
-      color: #6cff9a
-    }
-
-    .warn {
-      color: #ffb86b
-    }
-
-    .err {
-      color: #ff6b6b
-    }
-
-    .cambox {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      flex-wrap: wrap
-    }
-
-    .cap {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 4px
-    }
-
-    /* Style WebGazer’s own video feed so it sits where we expect */
+    /* Place WebGazer’s injected video feed inside our layout
+       You can toggle it with the “Show camera preview” checkbox. */
     #webgazerVideoFeed {
       position: static !important;
-      /* remove fixed positioning */
-      width: 360px !important;
-      height: 270px !important;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #0b0e16;
-      display: none;
-      /* we toggle with checkbox */
+      width: 360px !important; height: 270px !important;
+      border: 1px solid var(--border); border-radius: 12px; background: #0b0e16;
+      display: none; /* default hidden */
     }
+    /* Hide extra overlays we do not need for this task */
+    #webgazerVideoCanvas, #webgazerFaceOverlay, #webgazerFaceFeedbackBox { display: none !important; }
 
-    #webgazerVideoCanvas,
-    #webgazerFaceOverlay,
-    #webgazerFaceFeedbackBox {
-      display: none !important;
-      /* we don’t need these overlays */
-    }
-
-    /* Tiny helper banner if this is embedded (e.g., Canvas) */
+    /* Helper banner if embedded in LMS iframe (e.g., Canvas) */
     .embed-note {
-      position: fixed;
-      right: 12px;
-      bottom: 12px;
-      z-index: 9999;
-      background: #1f2937;
-      color: #e7ecf5;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid #243040;
-      font: 14px system-ui
+      position: fixed; right: 12px; bottom: 12px; z-index: 9999;
+      background: #1f2937; color: #e7ecf5; padding: 10px 12px; border-radius: 10px; border: 1px solid #243040;
+      font: 14px system-ui;
+    }
+    .embed-note button {
+      margin-left: 8px; padding: 6px 10px; border-radius: 8px; border: 1px solid #243040;
+      background: #111827; color: #e7ecf5; cursor: pointer;
     }
 
-    .embed-note button {
-      margin-left: 8px;
-      padding: 6px 10px;
-      border-radius: 8px;
-      border: 1px solid #243040;
-      background: #111827;
-      color: #e7ecf5;
-      cursor: pointer
+    /* Reference box for visible attribution and quick links */
+    .refs {
+      margin-top: 16px; font-size: 12px; color: var(--muted);
+      border-top: 1px solid var(--border); padding-top: 10px;
     }
+    .refs a { color: var(--accent); text-decoration: none; }
   </style>
 
-  <!-- WebGazer over HTTPS (required) -->
+  <!-- ==== STEP 2: Load WebGazer over HTTPS (required for camera) ==== -->
+  <!-- Attribution: WebGazer.js (Brown University HCI). See license (GPLv3) in the project repo. -->
+  <!-- Project site: https://webgazer.cs.brown.edu  |  Repo: https://github.com/brownhci/WebGazer -->
   <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
 </head>
 
 <body>
   <div class="wrap">
+    <!-- ==== STEP 3: Page header and usage note ==== -->
     <h1>Pursuit Rotor Task (WebGazer)</h1>
-    <p>Follow the dot. Sampling occurs exactly at each period (e.g., every <b>100&nbsp;ms</b>). This version logs cursor
-      error
-      and adds WebGazer’s gaze estimate (x,y) with a simple pupil proxy field.</p>
+    <p>
+      Follow the dot with your mouse. Sampling happens exactly at the chosen
+      <b>period (ms)</b> (for example, every <b>100&nbsp;ms</b>). Each sample logs target, cursor,
+      and WebGazer’s gaze estimate if available.
+    </p>
 
+    <!-- ==== STEP 4: Core controls (participant metadata, timing, sampling) ==== -->
     <div class="row">
       <label>Participant ID: <input id="pid" type="text" placeholder="e.g., S01"></label>
       <label>Condition: <input id="cond" type="text" placeholder="e.g., Baseline"></label>
@@ -220,6 +143,7 @@
       <span class="pill">Sampling: <span id="srBadge">10</span> Hz</span>
     </div>
 
+    <!-- ==== STEP 5: Motion path and difficulty controls ==== -->
     <div class="row">
       <label>Path:
         <select id="path">
@@ -236,6 +160,7 @@
       <label>Complexity (1–5): <input id="complex" type="number" min="1" max="5" step="1" value="1"></label>
     </div>
 
+    <!-- ==== STEP 6: Factors, camera controls, run buttons ==== -->
     <div class="row" style="align-items:flex-start">
       <label style="flex:1 1 380px">Factors (key=value, comma‑separated):
         <textarea id="factors" placeholder="Group=A, Task=Baseline, Hand=Right"></textarea>
@@ -254,9 +179,10 @@
       </div>
     </div>
 
+    <!-- ==== STEP 7: Video and task canvas layout ==== -->
     <div class="cambox">
       <div>
-        <!-- WebGazer injects #webgazerVideoFeed. We style it and place it here. -->
+        <!-- WebGazer injects #webgazerVideoFeed; we move it into #videoHost. -->
         <div class="stack" id="videoHost"></div>
         <div class="cap">Webcam status: <span id="camStatus" class="warn">not initialized</span></div>
       </div>
@@ -270,13 +196,21 @@
           <div class="badge">Gaze: <span id="gazeBadge">—</span></div>
         </div>
         <p id="status" class="hint"></p>
+
+        <!-- ==== STEP 8: Visible references and attribution ==== -->
+        <div class="refs">
+          <b>References.</b>
+          WebGazer.js (Brown University): <a href="https://webgazer.cs.brown.edu" target="_blank" rel="noopener">project site</a>.
+          Recommended citation: Papoutsaki, A., et&nbsp;al. (2016) IJCAI‑16.
+          License for WebGazer.js: GPLv3 (see <a href="https://github.com/brownhci/WebGazer" target="_blank" rel="noopener">repo</a>).
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     (function () {
-      // If embedded (e.g., Canvas), offer an "open in new tab" escape (iframes often block camera)
+      /* ==== STEP 0: If embedded in an LMS iframe (e.g., Canvas), offer a new-tab option ==== */
       if (window.top !== window) {
         const note = document.createElement('div');
         note.className = 'embed-note';
@@ -287,7 +221,7 @@
         });
       }
 
-      // ==== DOM
+      /* ==== STEP 1: Cache DOM elements ==== */
       const canvas = document.getElementById('board');
       const ctx = canvas.getContext('2d');
       const startBtn = document.getElementById('startBtn');
@@ -316,9 +250,9 @@
       const enableCamBtn = document.getElementById('enableCamBtn');
       const diagBtn = document.getElementById('diagBtn');
       const camDiag = document.getElementById('camDiag');
-      const videoHost = document.getElementById('videoHost'); // where we'll move WebGazer video
+      const videoHost = document.getElementById('videoHost');
 
-      // ==== State
+      /* ==== STEP 2: State variables ==== */
       let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
       let target = { x: 0, y: 0, r: 12 };
       let raf = null;
@@ -327,26 +261,26 @@
       let trialIdx = 0;
       let running = false;
       let samples = [];
-      let sampleEveryMs = 100;
-      let nextSampleAt = 0;
+      let sampleEveryMs = 100;     // sampling period (ms) — controlled by UI
+      let nextSampleAt = 0;        // absolute timestamp of the next sample
       let currentTrialLabel = "";
       const STATE = { participant: "", condition: "", factors: {}, factorCols: [] };
 
-      // CSV stores
+      // CSV buffers
       let summaryRows = [];
       let sampleRows = [];
 
-      // Gaze snapshot buffer
-      let latestGaze = { x: NaN, y: NaN, ts: 0, pupilR: NaN };
+      // Latest WebGazer snapshot (canvas-relative)
+      let latestGaze = { x: NaN, y: NaN, ts: 0, pupilR: NaN }; // pupilR reserved for future
 
-      // Mouse for cursor error
+      // Track mouse in canvas space for error computation
       canvas.addEventListener('mousemove', e => {
         const rect = canvas.getBoundingClientRect();
         mouse.x = e.clientX - rect.left;
         mouse.y = e.clientY - rect.top;
       });
 
-      // ==== WebGazer control
+      /* ==== STEP 3: WebGazer controls ==== */
       let webgazerStarted = false;
 
       async function startWebGazer() {
@@ -357,16 +291,16 @@
           return;
         }
 
-        // Configure WebGazer UI
+        // Configure WebGazer’s UI layers
         webgazer
-          .showVideo(true)                // we’ll style & move it below
+          .showVideo(true)                // we will place this video feed into #videoHost
           .showFaceOverlay(false)
           .showFaceFeedbackBox(false)
           .showPredictionPoints(false);
 
+        // Listener receives page (viewport) coords; convert to canvas coords
         webgazer.setGazeListener((data, ts) => {
           if (!data) { gazeBadgeEl.textContent = '—'; return; }
-          // WebGazer gives page coords (viewport). Convert to canvas-relative
           const rect = canvas.getBoundingClientRect();
           const gx = data.x - rect.left;
           const gy = data.y - rect.top;
@@ -379,7 +313,7 @@
         setCamStatus('ready', 'ok');
         camDiag.textContent = '';
 
-        // Move WebGazer’s video into our UI and wire the show/hide checkbox
+        // Move WebGazer’s injected video element into our layout
         const tryMove = () => {
           const feed = document.getElementById('webgazerVideoFeed');
           if (feed && !videoHost.contains(feed)) {
@@ -388,11 +322,11 @@
           }
         };
         tryMove();
-        // In case WebGazer injects slightly later:
         setTimeout(tryMove, 300);
         setTimeout(tryMove, 800);
       }
 
+      // Show/hide preview check box
       showCam.addEventListener('change', () => {
         const feed = document.getElementById('webgazerVideoFeed');
         if (feed) feed.style.display = showCam.checked ? 'block' : 'none';
@@ -400,6 +334,7 @@
 
       enableCamBtn.addEventListener('click', () => startWebGazer());
 
+      // Quick diagnostics helper for instructors or participants
       diagBtn.addEventListener('click', async () => {
         const lines = [];
         try {
@@ -423,10 +358,11 @@
         camDiag.textContent = lines.join(' | ');
       });
 
-      // ===== Controls
+      /* ==== STEP 4: Start, cancel, and download handlers ==== */
       startBtn.addEventListener('click', () => {
         if (running) return;
 
+        // 4a) Build headers for summary and sample CSVs based on factor keys
         const pid = (pidEl.value || '').trim() || crypto.randomUUID().slice(0, 8);
         const cond = (condEl.value || '').trim() || 'NA';
         const factorMap = parseFactors((factorsEl.value || '').trim());
@@ -458,15 +394,16 @@
         STATE.factors = factorMap;
         STATE.factorCols = factorCols;
 
+        // 4b) Set sampling period in milliseconds (grid-aligned sampling)
         sampleEveryMs = clamp(parseInt(sampleMsEl.value || "100", 10), 5, 1000);
         srBadgeEl.textContent = Math.round(1000 / sampleEveryMs);
 
+        // 4c) Reset UI and ensure WebGazer is running, then launch trial loop
         trialIdx = 0;
         statusEl.textContent = '';
         dlSummaryBtn.disabled = true;
         dlSamplesBtn.disabled = true;
 
-        // Ensure WebGazer is running before trials
         startWebGazer().then(runNextTrial);
       });
 
@@ -479,7 +416,7 @@
         if (!running) { stopWebGazer(); return; }
         running = false;
         if (raf) cancelAnimationFrame(raf);
-        // Discard partial trial rows
+        // Remove partial rows for the current trial index
         sampleRows = sampleRows.filter((row, i) => i === 0 || row[2] !== trialIdx);
         startBtn.disabled = false;
         cancelBtn.disabled = true;
@@ -496,14 +433,16 @@
       }
 
       function stopWebGazer() {
-        try { webgazer.pause(); } catch { }
+        try { webgazer.pause(); } catch { /* ignore */ }
         setCamStatus('stopped', 'warn');
       }
 
+      /* ==== STEP 5: Trial scheduler and render loop ==== */
       function runNextTrial() {
         const nTrials = clamp(parseInt(nTrialsEl.value || "3", 10), 1, 200);
-        const durSec = clamp(parseFloat(durEl.value || "6"), 1, 120);
+        const durSec  = clamp(parseFloat(durEl.value || "6"), 1, 120);
 
+        // 5a) If all trials finished, enable downloads and stop
         if (trialIdx >= nTrials) {
           running = false;
           startBtn.disabled = false;
@@ -518,33 +457,34 @@
           return;
         }
 
+        // 5b) Prepare next trial
         trialIdx++;
         running = true;
         startBtn.disabled = true;
-        cancelBtn.disabled = true; // enabled after first frame
+        cancelBtn.disabled = true;  // becomes enabled after first frame
         trialNumEl.textContent = String(trialIdx);
         samples = [];
 
-        // Timing
-        startTime = performance.now();
+        // 5c) Timing: align samples to a fixed grid in milliseconds
+        startTime    = performance.now();
         trialEndTime = startTime + durSec * 1000;
-        nextSampleAt = startTime; // start at t=0
+        nextSampleAt = startTime; // first sample at t=0
         currentTrialLabel = `T${trialIdx.toString().padStart(2, "0")}`;
         statusEl.textContent = `Running ${currentTrialLabel}…`;
 
-        // Path config
-        const path = pathEl.value;
-        const velMult = clamp(parseFloat(velEl.value || "1.0"), 0.2, 5);
+        // 5d) Path and difficulty parameters for this trial
+        const path   = pathEl.value;
+        const velMult= clamp(parseFloat(velEl.value || "1.0"), 0.2, 5);
         const cLevel = clamp(parseInt(complexEl.value || "1", 10), 1, 5);
 
-        // Geometry & base params
+        // Geometry and base frequency
         const A = Math.round(canvas.height * 0.30);
-        const B = Math.round(canvas.width * 0.40);
+        const B = Math.round(canvas.width  * 0.40);
         const R = Math.round(Math.min(A, B));
-        const baseF = 0.25; // Hz baseline
+        const baseF = 0.25;                 // baseline Hz
         const phase = Math.random() * Math.PI * 2;
 
-        // Lissajous ratios by complexity
+        // Lissajous frequency ratios by complexity
         const ratios = [[1, 1], [1, 2], [2, 3], [3, 4], [3, 5], [5, 7]];
         const [rx, ry] = ratios[Math.min(cLevel, ratios.length - 1)];
         const fx = baseF * rx * velMult;
@@ -563,27 +503,33 @@
         };
 
         let missingGaze = 0;
-        let totalCount = 0;
+        let totalCount  = 0;
 
+        // 5e) Animation + sampling loop
         function frame(now) {
           if (!running) return;
           cancelBtn.disabled = false;
 
-          // Current target position
+          // Update target position for render time
           const t_now = (now - startTime) / 1000;
           const p_now = pathPosition(t_now, env);
           target.x = p_now.x; target.y = p_now.y;
 
-          // Grid-aligned sampling
+          // Sample on fixed grid: while "now" passed the next sample slot,
+          // collect one or more samples to catch up.
           while (now >= nextSampleAt && nextSampleAt <= trialEndTime) {
             const t_ms = Math.round(nextSampleAt - startTime);
-            const t_s = t_ms / 1000;
+            const t_s  = t_ms / 1000;
+
+            // Compute target at the exact sample time for consistency
             const pos = pathPosition(t_s, env);
 
+            // Cursor error (mouse vs target)
             const mx = mouse.x, my = mouse.y;
             const err = Math.hypot(mx - pos.x, my - pos.y);
 
-            const base = [
+            // Common columns for both CSVs (participant, canvas, path, factors)
+            const baseCols = [
               STATE.participant, STATE.condition, trialIdx, currentTrialLabel,
               env.Duration_s, env.SamplePeriod_ms, env.SampleRate_Hz,
               env.CanvasW, env.CanvasH, env.DevicePixelRatio,
@@ -591,33 +537,36 @@
               ...STATE.factorCols.map(k => safeVal(STATE.factors[k]))
             ];
 
-            // Gaze snapshot (canvas-relative)
+            // Gaze snapshot at this instant (canvas-relative)
             const gx = Number.isFinite(latestGaze.x) ? round(latestGaze.x, 2) : "";
             const gy = Number.isFinite(latestGaze.y) ? round(latestGaze.y, 2) : "";
-            const pr = Number.isFinite(latestGaze.pupilR) ? round(latestGaze.pupilR, 2) : "";
+            const pr = Number.isFinite(latestGaze.pupilR) ? round(latestGaze.pupilR, 2) : ""; // reserved
             if (gx === "" || gy === "") missingGaze++;
             totalCount++;
 
+            // Append per-sample row
             sampleRows.push([
-              ...base,
+              ...baseCols,
               samples.length, round(t_s, 3), t_ms,
               round(pos.x, 2), round(pos.y, 2), round(mx, 2), round(my, 2), round(err, 2),
               gx, gy, pr, new Date().toISOString()
             ]);
 
             samples.push(err);
-            nextSampleAt += sampleEveryMs;
+            nextSampleAt += sampleEveryMs;   // advance to the next grid slot
           }
 
-          // Live mean
+          // Live feedback
           errNowEl.textContent = samples.length
             ? (samples.reduce((a, b) => a + b, 0) / samples.length).toFixed(1)
             : "—";
 
           drawScene(target.x, target.y);
+
           const leftMs = Math.max(0, trialEndTime - now);
           timeLeftEl.textContent = (leftMs / 1000).toFixed(1);
 
+          // Finish trial if time is up and we have taken the final sample
           if (now >= trialEndTime && nextSampleAt > trialEndTime) {
             finishTrial(env, currentTrialLabel, { missingGaze, totalCount });
             runNextTrial();
@@ -627,6 +576,7 @@
         }
         raf = requestAnimationFrame(frame);
 
+        // 5f) Compute summary metrics and append one row per trial
         function finishTrial(env, trialLabel, q) {
           running = false;
           if (raf) cancelAnimationFrame(raf);
@@ -650,12 +600,13 @@
         }
       }
 
-      // ---- Path generator ----
+      /* ==== STEP 6: Path generator for different motion types ==== */
       function pathPosition(t, env) {
         const { cx, cy, A_px: A, B_px: B, R_px: R, fx_Hz: fx, fy_Hz: fy, phase_rad: ph, Path, ComplexityLevel: c, Duration_s: dur } = env;
         const w = 2 * Math.PI;
-        const saw = (x) => 2 * (x - Math.floor(x + 0.5)); // -1..1
+        const saw = (x) => 2 * (x - Math.floor(x + 0.5)); // -1..1 sawtooth
         const clampXY = (x, y) => ({ x: Math.max(0, Math.min(canvas.width, x)), y: Math.max(0, Math.min(canvas.height, y)) });
+
         switch (Path) {
           case "Line": {
             const f = fx * (1 + 0.5 * (c - 1));
@@ -695,21 +646,23 @@
         }
       }
 
+      /* ==== STEP 7: Drawing ==== */
       function drawScene(x, y) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Crosshair at mouse
+
+        // Mouse crosshair (helps participants align cursor)
         ctx.globalAlpha = 0.8; ctx.strokeStyle = "#243040";
         ctx.beginPath(); ctx.moveTo(mouse.x, 0); ctx.lineTo(mouse.x, canvas.height);
         ctx.moveTo(0, mouse.y); ctx.lineTo(canvas.width, mouse.y); ctx.stroke();
 
-        // Target
+        // Target disc
         ctx.globalAlpha = 1; ctx.fillStyle = "#6cff9a";
         ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 0.2; ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1;
       }
 
-      // ===== Helpers
+      /* ==== STEP 8: Utilities ==== */
       function parseFactors(text) {
         const map = {}; if (!text) return map;
         text.split(/[,;\n]/).forEach(pair => {
@@ -734,13 +687,12 @@
       const safeVal = v => (v === undefined || v === null) ? "" : v;
       function setCamStatus(text, cls) { camStatus.textContent = text; camStatus.className = cls; }
 
-      // Initial UI
+      // ==== STEP 9: Initialize UI ====
       document.addEventListener('DOMContentLoaded', () => {
-        try { srBadgeEl.textContent = Math.round(1000 / parseInt(sampleMsEl.value, 10)); } catch { }
+        try { srBadgeEl.textContent = Math.round(1000 / parseInt(sampleMsEl.value, 10)); } catch { /* ignore */ }
         drawScene(canvas.width / 2, canvas.height / 2);
       });
     })();
   </script>
 </body>
-
 </html>
