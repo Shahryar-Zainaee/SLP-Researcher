@@ -97,7 +97,7 @@
       <div class="right endpoint">
         <!-- Paste or keep the default endpoint. It’s saved to localStorage. -->
         <label class="sr-only" for="apiUrl">Endpoint</label>
-        <input id="apiUrl" type="text" placeholder="https://backend-jjae.onrender.com/api/chat" />
+        <input id="apiUrl" type="text" placeholder="https://chat-backend-jjae.onrender.com/api/chat" />
         <button id="saveEndpoint">Save</button>
         <button id="checkEndpoint" title="Try GET /api/health or POST /api/chat">Check</button>
         <span class="help">Tip: You can also append <code>?api=https://…/api/chat</code> to the page URL.</span>
@@ -127,7 +127,7 @@
     // CONFIG & PERSISTENCE (GitHub Pages friendly)
     // ==============================================================
     const LS_KEY = 'chat_api_url';
-    const DEFAULT_API_URL = "https://backend-jjae.onrender.com/api/chat"; // <— your backend
+    const DEFAULT_API_URL = "https://chat-backend-jjae.onrender.com/api/chat"; // <— your backend
 
     function getApiUrl() {
       const v = localStorage.getItem(LS_KEY);
