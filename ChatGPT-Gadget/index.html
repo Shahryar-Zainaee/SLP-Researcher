@@ -8,32 +8,380 @@
   ================================================================
   PURPOSE
   ---------------------------------------------------------------
-  Single‑file HTML chat UI for GitHub Pages (or any static host) that connects to your own backend which calls the OpenAI API.
+  Single‑file HTML chat UI for GitHub Pages (or any static host) that
+  connects to your own backend which calls the OpenAI API.
 
   ✅ What you need
-    1) A backend endpoint (e.g., https://your-app.onrender.com/api/chat) that accepts POST { message: string } and returns { reply: string }.
+    1) A backend endpoint (e.g., https://your-app.onrender.com/api/chat)
+       that accepts POST { message: string } and returns { reply: string }.
     2) CORS enabled for your GitHub Pages origin.
 
   🔐 Security note
     Never include your OpenAI API key here — keep it on the backend.
 
   🧾 Attribution / Citations
-    - Authored with assistance from ChatGPT (OpenAI, 2025) using general web coding practices.
-    - Follows the OpenAI Responses API pattern described in official OpenAI documentation.
-    - UI logic (auto-scroll, timestamps, error handling) is adapted from generic JavaScript patterns, guided by ChatGPT’s generated examples.
+    - Authored with assistance from ChatGPT (OpenAI, 2025) using general web
+      coding practices.
+    - Follows the OpenAI Responses API pattern described in official OpenAI
+      documentation (no proprietary code copied).
+    - UI logic (auto‑scroll, timestamps, error handling) is adapted from
+      generic JavaScript patterns, with ChatGPT’s generated examples guiding
+      structure and comments.
 
   🛠 Quick steps
     1) Deploy a backend with /api/chat (and optional /api/health).
     2) Host this HTML on GitHub Pages.
-    3) Paste your backend URL in the “Endpoint” field, Save, and Check connection.
+    3) Paste your backend URL in the “Endpoint” field, Save, and Check.
 
   © 2025 — You may reuse/modify. Keep the attribution and security notice.
   ================================================================
   -->
-  <!-- Styles omitted here for brevity; same CSS as previous version -->
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #0b1322;
+      --panel-2: #111a2b;
+      --border: #243040;
+      --fg: #e7ecf5;
+      --muted: #9fb0c7;
+      --accent: #7aa2ff;
+      --user: #1e2a3d;
+      --bot: #141e30;
+      --danger: #ff6b6b;
+      --ok: #61d095;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--fg);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+                   "Apple Color Emoji", "Segoe UI Emoji";
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    header { border-bottom: 1px solid var(--border); background: var(--panel); }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 14px 18px; }
+    h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: .2px; }
+    main { flex: 1; display: flex; flex-direction: column; }
+    .messages {
+      flex: 1; overflow-y: auto; padding: 18px; gap: 10px; display: flex; flex-direction: column;
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    }
+    .msg { display: flex; gap: 10px; align-items: flex-start; }
+    .bubble { max-width: 78ch; width: fit-content; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4; }
+    .msg .who { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .msg.user { justify-content: flex-end; }
+    .msg.user .bubble { background: var(--user); border: 1px solid var(--border); border-radius: 12px 12px 4px 12px; padding: 10px 12px; }
+    .msg.bot  .bubble { background: var(--bot);  border: 1px solid var(--border); border-radius: 12px 12px 12px 4px; padding: 10px 12px; }
+    .timestamp { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .composer { border-top: 1px solid var(--border); background: var(--panel); }
+    .row { display: flex; align-items: flex-end; gap: 10px; }
+    textarea {
+      flex: 1; min-height: 52px; max-height: 200px; resize: vertical; padding: 12px;
+      border-radius: 12px; background: #0c1320; color: var(--fg); border: 1px solid var(--border);
+    }
+    button {
+      appearance: none; border: 1px solid var(--border); background: #1b2945; color: var(--fg);
+      padding: 12px 16px; border-radius: 12px; cursor: pointer; font-weight: 600;
+    }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .bar { display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+    .left, .right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .tag { font-size: 12px; color: var(--muted); padding: 4px 8px; border: 1px dashed var(--border); border-radius: 999px; }
+    .error { color: var(--danger); }
+    .ok { color: var(--ok); }
+    .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--fg); border-radius: 50%; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg) } }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    .endpoint { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .endpoint input {
+      min-width: 320px; max-width: 520px; width: 50vw;
+      padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+      background: #0c1320; color: var(--fg);
+    }
+    .help { font-size: 12px; color: var(--muted); margin-left: 8px; }
+  </style>
 </head>
 <body>
-  <!-- Body content identical to previous version -->
-  <!-- Added note: Ensure endpoint is correct before clicking Check -->
+  <header>
+    <div class="wrap bar">
+      <div class="left">
+        <h1>ChatGPT</h1>
+        <span class="tag">Static client for GitHub Pages</span>
+      </div>
+      <div class="right endpoint">
+        <!-- STEP: Paste your backend URL and Save. Stored in localStorage. -->
+        <label class="sr-only" for="apiUrl">Endpoint</label>
+        <input id="apiUrl" type="text" placeholder="https://your-backend.example.com/api/chat" />
+        <button id="saveEndpoint">Save</button>
+        <button id="checkEndpoint" title="Try GET /api/health or POST /api/chat">Check</button>
+        <span class="help">Tip: You can also append <code>?api=https://…/api/chat</code> to the page URL.</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="messages" class="messages" aria-live="polite" aria-label="Chat messages">
+      <!-- Fallback helper content is inserted by JS on first load if empty. -->
+    </div>
+  </main>
+
+  <footer class="composer">
+    <div class="wrap">
+      <div class="row" style="padding: 12px 0 16px;">
+        <label class="sr-only" for="input">Message</label>
+        <textarea id="input" placeholder="Type your message… (Shift+Enter for newline)"></textarea>
+        <button id="sendBtn">Send</button>
+      </div>
+      <div id="status" class="tag" aria-live="polite"></div>
+    </div>
+  </footer>
+
+  <script>
+    // ==============================================================
+    // CONFIG & PERSISTENCE (GitHub Pages friendly)
+    // --------------------------------------------------------------
+    // We store the endpoint in localStorage so you can host this file
+    // on GitHub Pages without editing the source each time.
+    // ==============================================================
+
+    const LS_KEY = 'chat_api_url';
+
+    function getApiUrl() {
+      const v = localStorage.getItem(LS_KEY);
+      return v && v.trim() ? v.trim() : '';
+    }
+
+    function setApiUrl(url) {
+      localStorage.setItem(LS_KEY, url.trim());
+    }
+
+    // ==============================================================
+    // DOM ELEMENTS
+    // ==============================================================
+
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
+    const statusEl = document.getElementById('status');
+
+    const apiUrlInput = document.getElementById('apiUrl');
+    const saveEndpointBtn = document.getElementById('saveEndpoint');
+    const checkEndpointBtn = document.getElementById('checkEndpoint');
+
+    // ==============================================================
+    // HELPERS
+    // ==============================================================
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>\"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[s]));
+    }
+    function fmtTime(d = new Date()) {
+      const hh = d.getHours().toString().padStart(2,'0');
+      const mm = d.getMinutes().toString().padStart(2,'0');
+      return `${hh}:${mm}`;
+    }
+    function autoScroll() { messagesEl.scrollTop = messagesEl.scrollHeight; }
+    function setStatus(text, cls) {
+      statusEl.textContent = text || '';
+      statusEl.classList.remove('error', 'ok');
+      if (cls) statusEl.classList.add(cls);
+    }
+
+    function addMessage(role, text) {
+      const msg = document.createElement('div');
+      msg.className = `msg ${role}`;
+
+      const block = document.createElement('div');
+      block.style.display = 'flex';
+      block.style.flexDirection = 'column';
+
+      const who = document.createElement('div');
+      who.className = 'who';
+      who.textContent = role === 'user' ? 'You' : 'Assistant';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = escapeHTML(text);
+
+      const time = document.createElement('div');
+      time.className = 'timestamp';
+      time.textContent = fmtTime();
+
+      block.appendChild(who);
+      block.appendChild(bubble);
+      block.appendChild(time);
+
+      msg.appendChild(block);
+      messagesEl.appendChild(msg);
+      autoScroll();
+    }
+
+    function addThinking() {
+      const msg = document.createElement('div');
+      msg.className = 'msg bot';
+      msg.dataset.spinner = 'true';
+
+      const block = document.createElement('div');
+      block.style.display = 'flex';
+      block.style.flexDirection = 'column';
+
+      const who = document.createElement('div');
+      who.className = 'who';
+      who.textContent = 'Assistant';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = `<span class="spinner" aria-hidden="true"></span> <span>Thinking…</span>`;
+
+      const time = document.createElement('div');
+      time.className = 'timestamp';
+      time.textContent = fmtTime();
+
+      block.appendChild(who);
+      block.appendChild(bubble);
+      block.appendChild(time);
+
+      msg.appendChild(block);
+      messagesEl.appendChild(msg);
+      autoScroll();
+      return msg;
+    }
+
+    // Insert a friendly helper message on first load so the page is never blank
+    function insertWelcomeIfEmpty() {
+      if (messagesEl.children.length === 0) {
+        const txt = [
+          'Welcome! To use this page on GitHub Pages, first paste your backend endpoint in the box above (e.g., https://your-app.onrender.com/api/chat), click Save, then Check.',
+          '',
+          'This page is a static UI only — your backend must call OpenAI securely.  (Authored with assistance from ChatGPT / OpenAI.)'
+        ].join('\n');
+        addMessage('bot', txt);
+      }
+    }
+
+    // ==============================================================
+    // CONNECTION CHECKS (for GitHub Pages convenience)
+    // --------------------------------------------------------------
+    // Attempts GET /api/health; if not available, tries POST /api/chat.
+    // ==============================================================
+
+    async function checkConnection() {
+      const base = (getApiUrl() || '').trim();
+      if (!base) { setStatus('Set your endpoint first, then click Check.', 'error'); return; }
+      setStatus('Checking…');
+
+      // If the user provided full /api/chat, derive the base for /api/health testing.
+      let healthUrl = base.replace(/\/?chat$/,'');
+      if (!/health$/.test(healthUrl)) healthUrl = healthUrl.replace(/\/$/,'') + '/health';
+
+      try {
+        const r = await fetch(healthUrl, { method: 'GET' });
+        if (r.ok) { setStatus('Health check OK', 'ok'); return; }
+      } catch (_) { /* ignore and try ping */ }
+
+      try {
+        const r2 = await fetch(base, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: 'ping' })
+        });
+        if (r2.ok) { setStatus('Ping OK', 'ok'); return; }
+        setStatus(`Endpoint responded with HTTP ${r2.status}`, 'error');
+      } catch (err) {
+        console.error(err);
+        setStatus('Could not reach endpoint (CORS or URL).', 'error');
+      }
+    }
+
+    // ==============================================================
+    // SENDING MESSAGES
+    // --------------------------------------------------------------
+    // Posts to your backend and expects { reply: string }.
+    // The UI logic (auto-scroll, timestamps, etc.) was authored with help
+    // from ChatGPT and standard web API patterns.
+    // ==============================================================
+
+    async function sendMessage() {
+      const apiUrl = (getApiUrl() || '').trim();
+      if (!apiUrl) { setStatus('Please set your endpoint first.', 'error'); return; }
+
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      addMessage('user', text);
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+      sendBtn.disabled = true; setStatus('Sending…');
+      const thinkingEl = addThinking();
+
+      try {
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const reply = (data && (data.reply ?? data.message ?? data.output ?? '')) || '';
+
+        thinkingEl.remove();
+        addMessage('bot', reply || '[Empty reply]');
+        setStatus('');
+      } catch (err) {
+        console.error(err);
+        thinkingEl.remove();
+        addMessage('bot', 'Sorry — there was a problem contacting the server.');
+        setStatus('Connection error (check endpoint/CORS).', 'error');
+      } finally {
+        sendBtn.disabled = false;
+        autoScroll();
+      }
+    }
+
+    // ==============================================================
+    // EVENTS & INIT
+    // ==============================================================
+
+    function initEndpointUI() {
+      // Pre-fill from localStorage or URL ?api=… (handy for demos)
+      const params = new URLSearchParams(location.search);
+      const urlParam = params.get('api');
+      const stored = getApiUrl();
+      const initial = urlParam || stored;
+      if (initial) apiUrlInput.value = initial;
+      if (!stored && initial) setApiUrl(initial);
+
+      saveEndpointBtn.addEventListener('click', () => {
+        const v = apiUrlInput.value.trim();
+        if (!v) { setStatus('Endpoint cleared.', 'error'); setApiUrl(''); return; }
+        setApiUrl(v);
+        setStatus('Endpoint saved.', 'ok');
+      });
+      checkEndpointBtn.addEventListener('click', checkConnection);
+    }
+
+    function initComposer() {
+      sendBtn.addEventListener('click', sendMessage);
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+      inputEl.addEventListener('input', () => {
+        inputEl.style.height = 'auto';
+        inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+      });
+      inputEl.focus();
+    }
+
+    // Run init
+    initEndpointUI();
+    initComposer();
+    insertWelcomeIfEmpty();
+  </script>
 </body>
 </html>
