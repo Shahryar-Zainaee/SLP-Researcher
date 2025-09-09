@@ -114,5 +114,5 @@ class RotorPlugin {
   }
 }
 
-// Register plugin with jsPsych
-// jsPsych.plugins["rotor"] = RotorPlugin;
+// Expose the plugin globally so jsPsych can detect it
+window.RotorPlugin = RotorPlugin;
