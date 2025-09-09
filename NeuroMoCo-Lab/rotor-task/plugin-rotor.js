@@ -115,4 +115,4 @@ class RotorPlugin {
 }
 
 // Register plugin with jsPsych
-jsPsych.plugins["rotor"] = RotorPlugin;
+// jsPsych.plugins["rotor"] = RotorPlugin;
