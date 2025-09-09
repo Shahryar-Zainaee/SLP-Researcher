@@ -4,13 +4,12 @@
   <meta charset="utf-8" />
   <title>Pursuit Rotor Cognitive Task</title>
 
-<!-- jsPsych v7 core -->
-<script src="https://unpkg.com/jspsych@7.3.3"></script>
-<link href="https://unpkg.com/jspsych@7.3.3/css/jspsych.css" rel="stylesheet" />
+  <!-- jsPsych v7 core -->
+  <script src="https://unpkg.com/jspsych@7.3.3"></script>
+  <link href="https://unpkg.com/jspsych@7.3.3/css/jspsych.css" rel="stylesheet" />
 
-<!-- built-in plugin: html-button-response -->
-<script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.3"></script>
-
+  <!-- built-in plugin: html-button-response -->
+  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.3"></script>
 
   <!-- your custom plugin -->
   <script src="./jspsych-pursuit-rotor-cog.js?v=3"></script>
@@ -26,12 +25,12 @@
 
     const timeline = [
       {
-        type: 'html-button-response',
+        type: jsPsychHtmlButtonResponse,
         stimulus: '<p>jsPsych loaded. Click to start the rotor task.</p>',
         choices: ['Start']
       },
       {
-        type: 'pursuit-rotor-cog',
+        type: jsPsychPursuitRotorCog,
         duration_ms: 10000,
         omega: 1.0,
         jitter: { type: 'angle', amp: 0.15 },
