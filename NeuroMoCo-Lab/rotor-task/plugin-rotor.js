@@ -14,7 +14,7 @@ jsPsych.plugins['rotor'] = (function() {
   plugin.info = {
     name: 'rotor',
     parameters: {
-      duration_s: { type: jsPsych.plugins.parameterType.INT, default: 10 },
+      duration_s: { type: jsPsych.ParameterType.INT, default: 10 },
       sampleMs: { type: jsPsych.plugins.parameterType.INT, default: 20 },
       canvasWidth: { type: jsPsych.plugins.parameterType.INT, default: 800 },
       canvasHeight: { type: jsPsych.plugins.parameterType.INT, default: 600 },
