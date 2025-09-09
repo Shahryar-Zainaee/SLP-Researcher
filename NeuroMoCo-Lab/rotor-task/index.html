@@ -1,1 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pursuit Rotor Task — Demo Runner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <!-- ================== Credits ==================
+    jsPsych (de Leeuw, 2015, MIT License)
+    WebGazer.js (Papoutsaki et al., 2016, GPLv3)
+  =============================================== -->
+
+  <!-- Load jsPsych core -->
+  <script src="https://unpkg.com/jspsych@7.3.0/dist/jspsych.js"></script>
+  <link href="https://unpkg.com/jspsych@7.3.0/css/jspsych.css" rel="stylesheet" />
+
+  <!-- Load WebGazer -->
+  <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+
+  <!-- Load our plugin and helpers -->
+  <script src="utils-rotor.js"></script>
+  <script src="webgazer-helper.js"></script>
+  <script src="plugin-rotor.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="jspsych-target"></div>
+
+  <script>
+    // Minimal jsPsych runner for testing rotor-task
+    const jsPsych = initJsPsych({
+      display_element: 'jspsych-target',
+      on_finish: () => {
+        jsPsych.data.displayData('json');
+      }
+    });
+
+    const demoTrial = {
+      type: 'rotor',
+      duration_s: 10,
+      pathType: 'circle',
+      velocity: 1.0,
+      complexity: 2,
+      nSwitches: 5,
+      minSwitchMs: 800,
+      maxSwitchMs: 1500,
+      freezeMinMs: 500,
+      freezeMaxMs: 1500,
+      nJitters: 2,
+      jitterMagnitudePx: 20,
+      jitterDurationMs: 150,
+      sampleMs: 20,
+      seed: 12345,
+      participantId: "P01",
+      conditionLabel: "demo"
+    };
+
+    jsPsych.run([demoTrial]);
+  </script>
+</body>
+</html>
