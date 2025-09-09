@@ -1,0 +1,51 @@
+<!--
+  This file uses jsPsych (MIT License).
+  jsPsych Copyright (c) 2011–2025 Josh de Leeuw and contributors
+  https://www.jspsych.org/
+-->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Pursuit Rotor Cognitive Task</title>
+
+  <!-- jsPsych v7 core + CSS from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/dist/jspsych.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/dist/css/jspsych.css" />
+
+  <!-- a built-in plugin from CDN (sanity check) -->
+  <script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/dist/plugin-html-button-response.js"></script>
+
+  <!-- Your custom plugin -->
+  <script src="./jspsych-pursuit-rotor-cog.js"></script>
+</head>
+<body></body>
+<script>
+  // Initialize jsPsych
+  const jsPsych = initJsPsych({
+    on_finish: () => jsPsych.data.displayData() // shows data table at end
+  });
+
+  const timeline = [];
+
+  // sanity check trial
+  timeline.push({
+    type: 'html-button-response',
+    stimulus: '<p>jsPsych loaded. Click to start the rotor task.</p>',
+    choices: ['Start']
+  });
+
+  // your custom task
+  timeline.push({
+    type: 'pursuit-rotor-cog',
+    duration_ms: 10000,
+    omega: 1.0,
+    jitter: { type: 'angle', amp: 0.15 },
+    probe_ahead_ms: 250,
+    probe_dur_ms: 400
+  });
+
+  jsPsych.run(timeline);
+</script>
+</html>
