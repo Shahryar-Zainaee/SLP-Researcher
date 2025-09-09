@@ -14,7 +14,7 @@ class RotorPlugin {
       sampleMs: { type: "int", default: 20 },
       canvasWidth: { type: "int", default: 800 },
       canvasHeight: { type: "int", default: 600 },
-      pathType: { type: "string", default: 'circle' },
+      pathType: { type: "string", default: "circle" },
       velocity: { type: "float", default: 1.0 },
       complexity: { type: "int", default: 2 },
       nSwitches: { type: "int", default: 5 },
@@ -37,7 +37,8 @@ class RotorPlugin {
 
   trial(display_element, trial) {
     // --- Setup canvas ---
-    display_element.innerHTML = `<canvas id="rotor-canvas" width="${trial.canvasWidth}" height="${trial.canvasHeight}"></canvas>`;
+    display_element.innerHTML =
+      `<canvas id="rotor-canvas" width="${trial.canvasWidth}" height="${trial.canvasHeight}"></canvas>`;
     const canvas = document.getElementById('rotor-canvas');
     const ctx = canvas.getContext('2d');
 
