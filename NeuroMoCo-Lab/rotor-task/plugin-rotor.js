@@ -4,7 +4,6 @@
  *
  * Credits:
  *   - jsPsych (de Leeuw, 2015, MIT License)
- *   - WebGazer.js (Papoutsaki et al., 2016, GPLv3)
  */
 
 (function() {
@@ -50,9 +49,6 @@
       mouse.y = e.clientY - rect.top;
     });
 
-    let gaze = { x: NaN, y: NaN };
-    startWebgazer(canvas, g => gaze = g);
-
     let samples = [];
     let startTime = performance.now();
     let endTime = startTime + trial.duration_s * 1000;
@@ -65,7 +61,6 @@
         return;
       }
 
-      // --- Determine current shape based on schedule ---
       let currentShape = 'circle';
       for (let s of schedules.switches) {
         if (now - startTime >= s.t_ms) {
@@ -74,7 +69,6 @@
       }
       schedules.currentShape = currentShape;
 
-      // --- Collect fixed-grid samples ---
       while (now >= nextSampleAt && nextSampleAt <= endTime) {
         const t_ms = Math.round(nextSampleAt - startTime);
         const pos = computeTargetPosition(t_ms/1000, trial, schedules);
@@ -86,15 +80,12 @@
           targetY: pos.y,
           mouseX: mouse.x,
           mouseY: mouse.y,
-          gazeX: gaze.x,
-          gazeY: gaze.y,
           error_px: err,
           shape: currentShape
         });
         nextSampleAt += trial.sampleMs;
       }
 
-      // --- Draw target shape ---
       const pos = computeTargetPosition((now - startTime)/1000, trial, schedules);
       drawTarget(ctx, pos, currentShape);
 
@@ -103,8 +94,6 @@
     requestAnimationFrame(frame);
 
     function endTrial() {
-      stopWebgazer();
-
       display_element.innerHTML = '';
       jsPsych.finishTrial({
         participantId: trial.participantId,
@@ -115,6 +104,5 @@
     }
   };
 
-  // ✅ Explicit registration for jsPsych v7/8
   jsPsych.plugins['rotor'] = plugin;
 })();
