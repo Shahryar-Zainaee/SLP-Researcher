@@ -1,37 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-
-  <!-- ================== Credits ==================
-    jsPsych (de Leeuw, 2015, MIT License)
-    WebGazer.js (Papoutsaki et al., 2016, GPLv3)
-  =============================================== -->
 <head>
   <meta charset="UTF-8" />
   <title>Pursuit Rotor Task — Demo Runner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- jsPsych core -->
+  <!-- ================== Credits ==================
+    jsPsych (de Leeuw, 2015, MIT License)
+    WebGazer.js (Papoutsaki et al., 2016, GPLv3)
+  =============================================== -->
+
+  <!-- jsPsych v8.2.2 -->
   <script src="https://unpkg.com/jspsych@8.2.2"></script>
   <link href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css" rel="stylesheet" />
 
-  <!-- WebGazer -->
+  <!-- Load WebGazer (includes its own TensorFlow.js) -->
   <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
-  <script src="https://unpkg.com/@jspsych/extension-webgazer@latest"></script>
 
-<!-- Your custom scripts (must come AFTER jsPsych) -->
-<script src="utils-rotor.js"></script>
-<script src="webgazer-helper.js"></script>
-<script src="plugin-rotor.js"></script>
-
-
-  <!-- Your custom scripts -->
+  <!-- Your custom helpers and plugin -->
   <script src="utils-rotor.js"></script>
   <script src="webgazer-helper.js"></script>
   <script src="plugin-rotor.js"></script>
 
   <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
   <div id="jspsych-target"></div>
 
