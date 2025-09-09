@@ -10,24 +10,24 @@ class RotorPlugin {
   static info = {
     name: 'rotor',
     parameters: {
-      duration_s: { type: jsPsych.ParameterType.INT, default: 10 },
-      sampleMs: { type: jsPsych.ParameterType.INT, default: 20 },
-      canvasWidth: { type: jsPsych.ParameterType.INT, default: 800 },
-      canvasHeight: { type: jsPsych.ParameterType.INT, default: 600 },
-      pathType: { type: jsPsych.ParameterType.STRING, default: 'circle' },
-      velocity: { type: jsPsych.ParameterType.FLOAT, default: 1.0 },
-      complexity: { type: jsPsych.ParameterType.INT, default: 2 },
-      nSwitches: { type: jsPsych.ParameterType.INT, default: 5 },
-      minSwitchMs: { type: jsPsych.ParameterType.INT, default: 800 },
-      maxSwitchMs: { type: jsPsych.ParameterType.INT, default: 1500 },
-      freezeMinMs: { type: jsPsych.ParameterType.INT, default: 500 },
-      freezeMaxMs: { type: jsPsych.ParameterType.INT, default: 2000 },
-      nJitters: { type: jsPsych.ParameterType.INT, default: 0 },
-      jitterMagnitudePx: { type: jsPsych.ParameterType.FLOAT, default: 10 },
-      jitterDurationMs: { type: jsPsych.ParameterType.INT, default: 100 },
-      seed: { type: jsPsych.ParameterType.INT, default: 42 },
-      participantId: { type: jsPsych.ParameterType.STRING, default: "" },
-      conditionLabel: { type: jsPsych.ParameterType.STRING, default: "" }
+      duration_s: { type: "int", default: 10 },
+      sampleMs: { type: "int", default: 20 },
+      canvasWidth: { type: "int", default: 800 },
+      canvasHeight: { type: "int", default: 600 },
+      pathType: { type: "string", default: 'circle' },
+      velocity: { type: "float", default: 1.0 },
+      complexity: { type: "int", default: 2 },
+      nSwitches: { type: "int", default: 5 },
+      minSwitchMs: { type: "int", default: 800 },
+      maxSwitchMs: { type: "int", default: 1500 },
+      freezeMinMs: { type: "int", default: 500 },
+      freezeMaxMs: { type: "int", default: 2000 },
+      nJitters: { type: "int", default: 0 },
+      jitterMagnitudePx: { type: "float", default: 10 },
+      jitterDurationMs: { type: "int", default: 100 },
+      seed: { type: "int", default: 42 },
+      participantId: { type: "string", default: "" },
+      conditionLabel: { type: "string", default: "" }
     }
   };
 
@@ -114,4 +114,4 @@ class RotorPlugin {
 }
 
 // Register plugin with jsPsych
-jsPsych.plugins['rotor'] = RotorPlugin;
+jsPsych.plugins["rotor"] = RotorPlugin;
