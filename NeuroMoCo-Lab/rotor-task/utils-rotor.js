@@ -3,9 +3,9 @@ function seededPRNG(seed) {
   let t = seed >>> 0;
   return function() {
     t += 0x6D2B79F5;
-    let r = Math.imul(t ^ t >>> 15, 1 | t);
-    r ^= r + Math.imul(r ^ r >>> 7, 61 | r);
-    return ((r ^ r >>> 14) >>> 0) / 4294967296;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
   };
 }
 
@@ -13,7 +13,7 @@ function seededPRNG(seed) {
 function buildSchedules(trial, rng) {
   const switches = [];
   let t = 0;
-  for (let i=0; i<trial.nSwitches; i++) {
+  for (let i = 0; i < trial.nSwitches; i++) {
     t += trial.minSwitchMs + Math.floor(rng() * (trial.maxSwitchMs - trial.minSwitchMs));
     if (t >= trial.duration_s * 1000) break;
     const shapeIdx = Math.floor(rng() * 3); // 0=circle,1=triangle,2=square
@@ -30,18 +30,10 @@ function computeTargetPosition(t, trial, schedules) {
   const R = Math.min(cx, cy) * 0.4;
   const f = 0.25 * trial.velocity;
 
-  switch(trial.pathType) {
-    case 'circle':
-      return {
-        x: cx + R * Math.cos(2 * Math.PI * f * t),
-        y: cy + R * Math.sin(2 * Math.PI * f * t)
-      };
-    default:
-      return {
-        x: cx + R * Math.cos(2 * Math.PI * f * t),
-        y: cy + R * Math.sin(2 * Math.PI * f * t)
-      };
-  }
+  return {
+    x: cx + R * Math.cos(2 * Math.PI * f * t),
+    y: cy + R * Math.sin(2 * Math.PI * f * t)
+  };
 }
 
 /* ===== Drawing ===== */
@@ -50,7 +42,7 @@ function drawTarget(ctx, pos, shape) {
   ctx.fillStyle = "#6cff9a";
   if (shape === 'circle') {
     ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 12, 0, Math.PI*2);
+    ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2);
     ctx.fill();
   } else if (shape === 'triangle') {
     ctx.beginPath();
