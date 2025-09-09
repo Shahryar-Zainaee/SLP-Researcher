@@ -181,4 +181,4 @@ var jsPsychPursuitRotorCog = (function (jspsych) {
   }
 
   return PursuitRotorCog;
-})(jsPsychModule);
+})(window.jsPsychModule);
