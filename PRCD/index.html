@@ -7,30 +7,36 @@
   <!-- jsPsych v7 core + CSS from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/dist/jspsych.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/dist/css/jspsych.css" />
-  <!-- sanity check plugin -->
+  <!-- built-in plugin for the start button -->
   <script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/dist/plugin-html-button-response.js"></script>
 
-  <!-- Your plugin (add ?v=2 to bust cache after updates) -->
-  <script src="./jspsych-pursuit-rotor-cog.js?v=2"></script>
+  <!-- your custom plugin -->
+  <script src="./jspsych-pursuit-rotor-cog.js?v=3"></script>
 </head>
-<body></body>
+<body>
+  <div id="jspsych-target"></div>
+</body>
 <script>
-  const jsPsych = initJsPsych({ on_finish: () => jsPsych.data.displayData() });
+  const jsPsych = initJsPsych({
+    display_element: 'jspsych-target',
+    on_finish: () => jsPsych.data.displayData()
+  });
 
-  const timeline = [];
-  timeline.push({
-    type: 'html-button-response',
-    stimulus: '<p>jsPsych loaded. Click to start the rotor task.</p>',
-    choices: ['Start']
-  });
-  timeline.push({
-    type: 'pursuit-rotor-cog',
-    duration_ms: 10000,
-    omega: 1.0,
-    jitter: { type: 'angle', amp: 0.15 },
-    probe_ahead_ms: 250,
-    probe_dur_ms: 400
-  });
+  const timeline = [
+    {
+      type: 'html-button-response',
+      stimulus: '<p>jsPsych loaded. Click to start the rotor task.</p>',
+      choices: ['Start']
+    },
+    {
+      type: 'pursuit-rotor-cog',
+      duration_ms: 10000,
+      omega: 1.0,
+      jitter: { type: 'angle', amp: 0.15 },
+      probe_ahead_ms: 250,
+      probe_dur_ms: 400
+    }
+  ];
 
   jsPsych.run(timeline);
 </script>
