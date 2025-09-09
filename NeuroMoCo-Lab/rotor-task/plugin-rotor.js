@@ -55,7 +55,7 @@
 
     let samples = [];
     let startTime = performance.now();
-    let endTime = startTime + trial.duration_s*1000;
+    let endTime = startTime + trial.duration_s * 1000;
     let nextSampleAt = startTime;
 
     // --- Loop ---
@@ -115,6 +115,6 @@
     }
   };
 
-  // ✅ Explicitly register plugin with jsPsych
+  // ✅ Explicit registration for jsPsych v7/8
   jsPsych.plugins['rotor'] = plugin;
 })();
