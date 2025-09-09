@@ -1,6 +1,6 @@
 /*
   Custom plugin: pursuit-rotor-cog
-  Author: [Your Name]
+  Author: Shahryar
   Built for use with jsPsych (https://www.jspsych.org/)
 
   jsPsych is open-source software released under the MIT License.
