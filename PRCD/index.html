@@ -1,9 +1,3 @@
-<!--
-  This file uses jsPsych (MIT License).
-  jsPsych Copyright (c) 2011–2025 Josh de Leeuw and contributors
-  https://www.jspsych.org/
--->
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -13,30 +7,22 @@
   <!-- jsPsych v7 core + CSS from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/dist/jspsych.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/dist/css/jspsych.css" />
-
-  <!-- a built-in plugin from CDN (sanity check) -->
+  <!-- sanity check plugin -->
   <script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/dist/plugin-html-button-response.js"></script>
 
-  <!-- Your custom plugin -->
-  <script src="./jspsych-pursuit-rotor-cog.js"></script>
+  <!-- Your plugin (add ?v=2 to bust cache after updates) -->
+  <script src="./jspsych-pursuit-rotor-cog.js?v=2"></script>
 </head>
 <body></body>
 <script>
-  // Initialize jsPsych
-  const jsPsych = initJsPsych({
-    on_finish: () => jsPsych.data.displayData() // shows data table at end
-  });
+  const jsPsych = initJsPsych({ on_finish: () => jsPsych.data.displayData() });
 
   const timeline = [];
-
-  // sanity check trial
   timeline.push({
     type: 'html-button-response',
     stimulus: '<p>jsPsych loaded. Click to start the rotor task.</p>',
     choices: ['Start']
   });
-
-  // your custom task
   timeline.push({
     type: 'pursuit-rotor-cog',
     duration_ms: 10000,
