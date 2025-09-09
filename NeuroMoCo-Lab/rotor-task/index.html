@@ -10,9 +10,15 @@
     WebGazer.js (Papoutsaki et al., 2016, GPLv3)
   =============================================== -->
 
-<!-- jsPsych UMD build (works in browsers without bundlers) -->
-<script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/umd/jspsych.umd.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/jspsych@7.3.3/css/jspsych.css" rel="stylesheet" />
+<!-- jsPsych v7.3.3 -->
+<script src="https://unpkg.com/jspsych@7.3.3/dist/jspsych.js"></script>
+<link href="https://unpkg.com/jspsych@7.3.3/css/jspsych.css" rel="stylesheet" />
+
+<!-- (Optional) Force TensorFlow.js to CPU if WebGL fails -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.18.0/dist/tf.min.js"></script>
+<script>
+  tf.setBackend("cpu"); 
+</script>
 
 
   <!-- Load WebGazer -->
