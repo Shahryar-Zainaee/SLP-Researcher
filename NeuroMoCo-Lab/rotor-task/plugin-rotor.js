@@ -1,5 +1,5 @@
 /**
- * jsPsych Plugin: rotor-task
+ * Adapted with jsPsych
  * Pursuit rotor task with shape-coded states (mouse only).
  *
  * Credits:
@@ -115,4 +115,4 @@ class RotorPlugin {
 }
 
 // Expose the plugin globally so jsPsych can detect it
-window.RotorPlugin = RotorPlugin;
+window.jsPsychRotor = RotorPlugin;
