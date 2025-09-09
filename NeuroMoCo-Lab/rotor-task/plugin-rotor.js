@@ -10,24 +10,24 @@ class RotorPlugin {
   static info = {
     name: 'rotor',
     parameters: {
-      duration_s: { type: Number, default: 10 },
-      sampleMs: { type: Number, default: 20 },
-      canvasWidth: { type: Number, default: 800 },
-      canvasHeight: { type: Number, default: 600 },
-      pathType: { type: String, default: 'circle' },
-      velocity: { type: Number, default: 1.0 },
-      complexity: { type: Number, default: 2 },
-      nSwitches: { type: Number, default: 5 },
-      minSwitchMs: { type: Number, default: 800 },
-      maxSwitchMs: { type: Number, default: 1500 },
-      freezeMinMs: { type: Number, default: 500 },
-      freezeMaxMs: { type: Number, default: 2000 },
-      nJitters: { type: Number, default: 0 },
-      jitterMagnitudePx: { type: Number, default: 10 },
-      jitterDurationMs: { type: Number, default: 100 },
-      seed: { type: Number, default: 42 },
-      participantId: { type: String, default: "" },
-      conditionLabel: { type: String, default: "" }
+      duration_s: { type: jsPsych.ParameterType.INT, default: 10 },
+      sampleMs: { type: jsPsych.ParameterType.INT, default: 20 },
+      canvasWidth: { type: jsPsych.ParameterType.INT, default: 800 },
+      canvasHeight: { type: jsPsych.ParameterType.INT, default: 600 },
+      pathType: { type: jsPsych.ParameterType.STRING, default: 'circle' },
+      velocity: { type: jsPsych.ParameterType.FLOAT, default: 1.0 },
+      complexity: { type: jsPsych.ParameterType.INT, default: 2 },
+      nSwitches: { type: jsPsych.ParameterType.INT, default: 5 },
+      minSwitchMs: { type: jsPsych.ParameterType.INT, default: 800 },
+      maxSwitchMs: { type: jsPsych.ParameterType.INT, default: 1500 },
+      freezeMinMs: { type: jsPsych.ParameterType.INT, default: 500 },
+      freezeMaxMs: { type: jsPsych.ParameterType.INT, default: 2000 },
+      nJitters: { type: jsPsych.ParameterType.INT, default: 0 },
+      jitterMagnitudePx: { type: jsPsych.ParameterType.FLOAT, default: 10 },
+      jitterDurationMs: { type: jsPsych.ParameterType.INT, default: 100 },
+      seed: { type: jsPsych.ParameterType.INT, default: 42 },
+      participantId: { type: jsPsych.ParameterType.STRING, default: "" },
+      conditionLabel: { type: jsPsych.ParameterType.STRING, default: "" }
     }
   };
 
