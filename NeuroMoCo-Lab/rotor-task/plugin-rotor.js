@@ -66,7 +66,16 @@ jsPsych.plugins['rotor'] = (function() {
         return;
       }
 
-      // Collect fixed-grid samples
+      // --- Determine current shape based on schedule ---
+      let currentShape = 'circle';
+      for (let s of schedules.switches) {
+        if (now - startTime >= s.t_ms) {
+          currentShape = s.shape;
+        }
+      }
+      schedules.currentShape = currentShape;
+
+      // --- Collect fixed-grid samples ---
       while (now >= nextSampleAt && nextSampleAt <= endTime) {
         const t_ms = Math.round(nextSampleAt - startTime);
         const pos = computeTargetPosition(t_ms/1000, trial, schedules);
@@ -80,14 +89,15 @@ jsPsych.plugins['rotor'] = (function() {
           mouseY: mouse.y,
           gazeX: gaze.x,
           gazeY: gaze.y,
-          error_px: err
+          error_px: err,
+          shape: currentShape
         });
         nextSampleAt += trial.sampleMs;
       }
 
-      // Draw target (use current shape)
+      // --- Draw target shape ---
       const pos = computeTargetPosition((now - startTime)/1000, trial, schedules);
-      drawTarget(ctx, pos, schedules.currentShape);
+      drawTarget(ctx, pos, currentShape);
 
       requestAnimationFrame(frame);
     }
@@ -108,3 +118,17 @@ jsPsych.plugins['rotor'] = (function() {
 
   return plugin;
 })();
+
+/* ===== Helper: Build schedules ===== */
+function buildSchedules(trial, rng) {
+  const switches = [];
+  let t = 0;
+  for (let i=0; i<trial.nSwitches; i++) {
+    t += trial.minSwitchMs + Math.floor(rng() * (trial.maxSwitchMs - trial.minSwitchMs));
+    if (t >= trial.duration_s*1000) break;
+    const shapeIdx = Math.floor(rng() * 3); // 0=circle,1=triangle,2=square
+    const shape = (shapeIdx === 0) ? 'circle' : (shapeIdx === 1) ? 'triangle' : 'square';
+    switches.push({index: i, t_ms: t, shape});
+  }
+  return {switches, currentShape: 'circle'};
+}
