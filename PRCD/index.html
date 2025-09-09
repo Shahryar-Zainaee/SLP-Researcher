@@ -1,45 +1,72 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>Pursuit Rotor Cognitive Task</title>
-
-  <!-- jsPsych v7 core -->
-  <script src="https://unpkg.com/jspsych@7.3.3"></script>
-  <link href="https://unpkg.com/jspsych@7.3.3/css/jspsych.css" rel="stylesheet" />
-
-  <!-- built-in plugin: html-button-response -->
-  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.3"></script>
-
-  <!-- your custom plugin -->
-  <script src="./jspsych-pursuit-rotor-cog.js?v=3"></script>
+  <meta charset="UTF-8">
+  <title>Pursuit Rotor Control Panel</title>
+  <script src="jspsych.js"></script>
+  <script src="plugins/jspsych-pursuit-rotor-cog.js"></script>
+  <link rel="stylesheet" href="jspsych.css">
 </head>
 <body>
-  <div id="jspsych-target"></div>
 
-  <script>
-    const jsPsych = initJsPsych({
+<div id="control-panel">
+  <h2>Rotor Task Control Panel</h2>
+
+  <label>
+    Trial Duration (ms):
+    <input type="number" id="duration" value="10000">
+  </label><br><br>
+
+  <label>
+    Number of Repetitions:
+    <input type="number" id="reps" value="5">
+  </label><br><br>
+
+  <button onclick="startExperiment()">Start Experiment</button>
+  <button onclick="downloadCSV()">Download CSV</button>
+</div>
+
+<div id="jspsych-target"></div>
+
+<script>
+  let jsPsychInstance;
+
+  function startExperiment() {
+    // hide the control panel while task runs
+    document.getElementById("control-panel").style.display = "none";
+
+    let duration = parseInt(document.getElementById('duration').value);
+    let reps = parseInt(document.getElementById('reps').value);
+
+    let rotor_trial = {
+      type: 'pursuit-rotor-cog',
+      duration: duration
+    };
+
+    let timeline = [];
+    for (let i = 0; i < reps; i++) {
+      timeline.push(rotor_trial);
+    }
+
+    jsPsychInstance = initJsPsych({
       display_element: 'jspsych-target',
-      on_finish: () => jsPsych.data.displayData()
+      on_finish: function() {
+        // show the control panel again after task ends
+        document.getElementById("control-panel").style.display = "block";
+        alert("Experiment finished. You can now download the CSV.");
+      }
     });
 
-    const timeline = [
-      {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: '<p>jsPsych loaded. Click to start the rotor task.</p>',
-        choices: ['Start']
-      },
-      {
-        type: jsPsychPursuitRotorCog,
-        duration_ms: 10000,
-        omega: 1.0,
-        jitter: { type: 'angle', amp: 0.15 },
-        probe_ahead_ms: 250,
-        probe_dur_ms: 400
-      }
-    ];
+    jsPsychInstance.run(timeline);
+  }
 
-    jsPsych.run(timeline);
-  </script>
+  function downloadCSV() {
+    if (jsPsychInstance) {
+      jsPsychInstance.data.get().localSave('csv', 'rotor_data.csv');
+    } else {
+      alert("Run the experiment first!");
+    }
+  }
+</script>
 </body>
 </html>
