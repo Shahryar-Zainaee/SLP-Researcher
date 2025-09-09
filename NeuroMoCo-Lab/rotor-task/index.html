@@ -10,15 +10,19 @@
   <title>Pursuit Rotor Task — Demo Runner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- jsPsych v8.2.2 -->
+  <!-- jsPsych core -->
   <script src="https://unpkg.com/jspsych@8.2.2"></script>
   <link href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css" rel="stylesheet" />
 
-
-  <!-- WebGazer (forked) -->
-  <script src="https://cdn.jsdelivr.net/gh/jspsych/jspsych@jspsych@7.0.0/examples/js/webgazer/webgazer.js"></script>
-  <!-- WebGazer extension for jsPsych -->
+  <!-- WebGazer -->
+  <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
   <script src="https://unpkg.com/@jspsych/extension-webgazer@latest"></script>
+
+<!-- Your custom scripts (must come AFTER jsPsych) -->
+<script src="utils-rotor.js"></script>
+<script src="webgazer-helper.js"></script>
+<script src="plugin-rotor.js"></script>
+
 
   <!-- Your custom scripts -->
   <script src="utils-rotor.js"></script>
