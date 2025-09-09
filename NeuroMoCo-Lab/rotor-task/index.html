@@ -5,21 +5,12 @@
   <title>Pursuit Rotor Task — Demo Runner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- ================== Credits ==================
-    jsPsych (de Leeuw, 2015, MIT License)
-    WebGazer.js (Papoutsaki et al., 2016, GPLv3)
-  =============================================== -->
-
   <!-- jsPsych v8.2.2 -->
   <script src="https://unpkg.com/jspsych@8.2.2"></script>
   <link href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css" rel="stylesheet" />
 
-  <!-- Load WebGazer (includes its own TensorFlow.js) -->
-  <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
-
-  <!-- Your custom helpers and plugin -->
+  <!-- Custom helpers and plugin -->
   <script src="utils-rotor.js"></script>
-  <script src="webgazer-helper.js"></script>
   <script src="plugin-rotor.js"></script>
 
   <link rel="stylesheet" href="style.css" />
@@ -28,7 +19,6 @@
   <div id="jspsych-target"></div>
 
   <script>
-    // Minimal jsPsych runner for testing rotor-task
     const jsPsych = initJsPsych({
       display_element: 'jspsych-target',
       on_finish: () => {
