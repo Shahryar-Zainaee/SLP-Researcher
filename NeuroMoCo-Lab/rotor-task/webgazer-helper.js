@@ -12,22 +12,21 @@ function startWebgazer(canvas, callback) {
     console.warn("WebGazer not loaded.");
     return;
   }
-
-  webgazer.setGazeListener((data, ts) => {
-    if (data == null) return;
-    const rect = canvas.getBoundingClientRect();
-    callback({
-      x: data.x - rect.left,
-      y: data.y - rect.top,
-      ts
-    });
-  })
-  .showVideo(false)
-  .showFaceOverlay(false)
-  .showFaceFeedbackBox(false)
-  .begin();
-}
-
-function stopWebgazer() {
-  try { webgazer.pause(); } catch(e) { }
+  try {
+    webgazer.setGazeListener((data, ts) => {
+      if (data == null) return;
+      const rect = canvas.getBoundingClientRect();
+      callback({
+        x: data.x - rect.left,
+        y: data.y - rect.top,
+        ts
+      });
+    })
+    .showVideo(false)
+    .showFaceOverlay(false)
+    .showFaceFeedbackBox(false)
+    .begin();
+  } catch (e) {
+    console.warn("WebGazer failed to initialize:", e);
+  }
 }
