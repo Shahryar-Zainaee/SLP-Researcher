@@ -7,31 +7,30 @@
  *   - WebGazer.js (Papoutsaki et al., 2016, GPLv3)
  */
 
-jsPsych.plugins['rotor'] = (function() {
-
+(function() {
   const plugin = {};
 
   plugin.info = {
     name: 'rotor',
     parameters: {
       duration_s: { type: jsPsych.ParameterType.INT, default: 10 },
-      sampleMs: { type: jsPsych.plugins.parameterType.INT, default: 20 },
-      canvasWidth: { type: jsPsych.plugins.parameterType.INT, default: 800 },
-      canvasHeight: { type: jsPsych.plugins.parameterType.INT, default: 600 },
-      pathType: { type: jsPsych.plugins.parameterType.STRING, default: 'circle' },
-      velocity: { type: jsPsych.plugins.parameterType.FLOAT, default: 1.0 },
-      complexity: { type: jsPsych.plugins.parameterType.INT, default: 2 },
-      nSwitches: { type: jsPsych.plugins.parameterType.INT, default: 5 },
-      minSwitchMs: { type: jsPsych.plugins.parameterType.INT, default: 800 },
-      maxSwitchMs: { type: jsPsych.plugins.parameterType.INT, default: 1500 },
-      freezeMinMs: { type: jsPsych.plugins.parameterType.INT, default: 500 },
-      freezeMaxMs: { type: jsPsych.plugins.parameterType.INT, default: 2000 },
-      nJitters: { type: jsPsych.plugins.parameterType.INT, default: 0 },
-      jitterMagnitudePx: { type: jsPsych.plugins.parameterType.FLOAT, default: 10 },
-      jitterDurationMs: { type: jsPsych.plugins.parameterType.INT, default: 100 },
-      seed: { type: jsPsych.plugins.parameterType.INT, default: 42 },
-      participantId: { type: jsPsych.plugins.parameterType.STRING, default: "" },
-      conditionLabel: { type: jsPsych.plugins.parameterType.STRING, default: "" }
+      sampleMs: { type: jsPsych.ParameterType.INT, default: 20 },
+      canvasWidth: { type: jsPsych.ParameterType.INT, default: 800 },
+      canvasHeight: { type: jsPsych.ParameterType.INT, default: 600 },
+      pathType: { type: jsPsych.ParameterType.STRING, default: 'circle' },
+      velocity: { type: jsPsych.ParameterType.FLOAT, default: 1.0 },
+      complexity: { type: jsPsych.ParameterType.INT, default: 2 },
+      nSwitches: { type: jsPsych.ParameterType.INT, default: 5 },
+      minSwitchMs: { type: jsPsych.ParameterType.INT, default: 800 },
+      maxSwitchMs: { type: jsPsych.ParameterType.INT, default: 1500 },
+      freezeMinMs: { type: jsPsych.ParameterType.INT, default: 500 },
+      freezeMaxMs: { type: jsPsych.ParameterType.INT, default: 2000 },
+      nJitters: { type: jsPsych.ParameterType.INT, default: 0 },
+      jitterMagnitudePx: { type: jsPsych.ParameterType.FLOAT, default: 10 },
+      jitterDurationMs: { type: jsPsych.ParameterType.INT, default: 100 },
+      seed: { type: jsPsych.ParameterType.INT, default: 42 },
+      participantId: { type: jsPsych.ParameterType.STRING, default: "" },
+      conditionLabel: { type: jsPsych.ParameterType.STRING, default: "" }
     }
   };
 
@@ -44,14 +43,14 @@ jsPsych.plugins['rotor'] = (function() {
     const rng = seededPRNG(trial.seed);
     const schedules = buildSchedules(trial, rng);
 
-    let mouse = {x: trial.canvasWidth/2, y: trial.canvasHeight/2};
+    let mouse = { x: trial.canvasWidth/2, y: trial.canvasHeight/2 };
     canvas.addEventListener('mousemove', e => {
       const rect = canvas.getBoundingClientRect();
       mouse.x = e.clientX - rect.left;
       mouse.y = e.clientY - rect.top;
     });
 
-    let gaze = {x: NaN, y: NaN};
+    let gaze = { x: NaN, y: NaN };
     startWebgazer(canvas, g => gaze = g);
 
     let samples = [];
@@ -116,19 +115,6 @@ jsPsych.plugins['rotor'] = (function() {
     }
   };
 
-  return plugin;
+  // ✅ Explicitly register plugin with jsPsych
+  jsPsych.plugins['rotor'] = plugin;
 })();
-
-/* ===== Helper: Build schedules ===== */
-function buildSchedules(trial, rng) {
-  const switches = [];
-  let t = 0;
-  for (let i=0; i<trial.nSwitches; i++) {
-    t += trial.minSwitchMs + Math.floor(rng() * (trial.maxSwitchMs - trial.minSwitchMs));
-    if (t >= trial.duration_s*1000) break;
-    const shapeIdx = Math.floor(rng() * 3); // 0=circle,1=triangle,2=square
-    const shape = (shapeIdx === 0) ? 'circle' : (shapeIdx === 1) ? 'triangle' : 'square';
-    switches.push({index: i, t_ms: t, shape});
-  }
-  return {switches, currentShape: 'circle'};
-}
