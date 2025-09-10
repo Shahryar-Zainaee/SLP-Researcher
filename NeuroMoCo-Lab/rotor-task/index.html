@@ -22,30 +22,30 @@
 <body>
   <div id="jspsych-target"></div>
 
+  <script src="../jspsych/plugins/plugin-call-function.js"></script>
+
   <script>
-    // Initialize jsPsych
-    const jsPsych = initJsPsych({
-      display_element: 'jspsych-target',
-      on_finish: () => {
-        jsPsych.data.displayData('json');
-      }
-    });
+  const jsPsych = initJsPsych({
+    display_element: 'jspsych-target',
+    on_finish: () => {
+      jsPsych.data.displayData('json');
+    }
+  });
 
-    // Define trial using the call-function plugin
-    const rotorTrial = {
-      type: jsPsych.plugins['call-function'],
-      async: true,
-      func: () => {
-        return new Promise(resolve => {
-          runRotorTask(data => {
-            resolve(data); // stores rotor task samples/schedules in jsPsych.data
-          });
+  // Use call-function plugin directly
+  const rotorTrial = {
+    type: jsPsychCallFunction,   // <-- use the plugin class directly
+    async: true,
+    func: () => {
+      return new Promise(resolve => {
+        runRotorTask(data => {
+          resolve(data); // store rotor task data in jsPsych
         });
-      }
-    };
+      });
+    }
+  };
 
-    // Run experiment
-    jsPsych.run([rotorTrial]);
-  </script>
+  jsPsych.run([rotorTrial]);
+</script>
 </body>
 </html>
