@@ -114,7 +114,7 @@ class RotorPlugin {
   }
 }
 
-// Register plugin explicitly so jsPsych can find it
+// Explicitly register the plugin with jsPsych
 if (typeof window.jsPsych !== "undefined") {
   if (!window.jsPsych.plugins) {
     window.jsPsych.plugins = {};
