@@ -114,10 +114,6 @@ class RotorPlugin {
   }
 }
 
-// Explicitly register the plugin with jsPsych
-if (typeof window.jsPsych !== "undefined") {
-  if (!window.jsPsych.plugins) {
-    window.jsPsych.plugins = {};
-  }
-  window.jsPsych.plugins["rotor"] = RotorPlugin;
-}
+// Make plugin available globally for jsPsych
+window.RotorPlugin = RotorPlugin;
+
