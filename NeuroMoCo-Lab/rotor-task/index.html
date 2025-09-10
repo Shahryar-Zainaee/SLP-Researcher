@@ -26,27 +26,19 @@
       }
     });
 
-    const demoTrial = {
-      type: 'rotor',
-      duration_s: 10,
-      pathType: 'circle',
-      velocity: 1.0,
-      complexity: 2,
-      nSwitches: 5,
-      minSwitchMs: 800,
-      maxSwitchMs: 1500,
-      freezeMinMs: 500,
-      freezeMaxMs: 1500,
-      nJitters: 2,
-      jitterMagnitudePx: 20,
-      jitterDurationMs: 150,
-      sampleMs: 20,
-      seed: 12345,
-      participantId: "P01",
-      conditionLabel: "demo"
-    };
+    const rotorTrial = {
+  type: jsPsychCallFunction,
+  async: true,
+  func: () => {
+    return new Promise(resolve => {
+      runRotorTask(data => {
+        resolve(data); // data is stored in jsPsych.data
+      });
+    });
+  }
+};
 
-    jsPsych.run([demoTrial]);
+jsPsych.run([rotorTrial]);
   </script>
 </body>
 </html>
