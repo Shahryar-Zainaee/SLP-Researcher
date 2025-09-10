@@ -1,42 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Pursuit Rotor Task — Single-File Demo (jsPsych v8.2.2)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <title>Pursuit Rotor Task — Single File</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- jsPsych v8.2.2 (CDN) -->
+  <!-- Load jsPsych v8.2.2 from CDN -->
   <script src="https://unpkg.com/jspsych@8.2.2/dist/jspsych.js"></script>
   <link href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css" rel="stylesheet" />
 
   <style>
-    /* Minimal look */
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      font-family: system-ui, sans-serif;
       background: #0f1115;
       color: #e7ecf5;
     }
-    .jspsych-content-wrapper {
-      width: 100%;
-      height: 100vh;
-      display: grid;
-      place-items: center;
-    }
-    #jspsych-target { width: 100%; }
     #rotor-canvas {
       display: block;
       margin: 0 auto;
       border: 2px solid #243040;
-      border-radius: 12px;
+      border-radius: 8px;
       background: #0b0e16;
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
     }
-    .hud {
-      text-align: center;
-      margin-bottom: 12px;
-      font-size: 14px;
-      opacity: .8;
+    .jspsych-content-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
   </style>
 </head>
@@ -44,321 +36,154 @@
   <div id="jspsych-target"></div>
 
   <script>
-    /**
-     * ===== Seeded PRNG (Mulberry32) =====
-     * Simple, fast deterministic RNG to reproduce schedules/paths across runs.
-     */
+    // --- Helpers ---
     function seededPRNG(seed) {
-      let t = seed >>> 0;
-      return function() {
-        t += 0x6D2B79F5;
-        let r = Math.imul(t ^ (t >>> 15), 1 | t);
-        r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
-        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      let x = Math.sin(seed) * 10000;
+      return () => {
+        x = Math.sin(x) * 10000;
+        return x - Math.floor(x);
       };
     }
-
-    /**
-     * ===== Event Scheduling =====
-     * Build a schedule of state switches (shapes), optional freezes, and jitters.
-     * All times are in ms.
-     */
     function buildSchedules(trial, rng) {
       const switches = [];
-      let t = 0;
+      const shapes = ["circle", "square", "triangle"];
       for (let i = 0; i < trial.nSwitches; i++) {
-        const gap = trial.minSwitchMs + Math.floor(rng() * (trial.maxSwitchMs - trial.minSwitchMs));
-        t += gap;
-        if (t >= trial.duration_s * 1000) break;
-        const shapeIdx = Math.floor(rng() * 3); // 0=circle,1=triangle,2=square
-        const shape = shapeIdx === 0 ? 'circle' : shapeIdx === 1 ? 'triangle' : 'square';
-        switches.push({ index: i, t_ms: t, shape });
+        switches.push({
+          t_ms: Math.floor(trial.minSwitchMs + rng() * (trial.maxSwitchMs - trial.minSwitchMs)),
+          shape: shapes[i % shapes.length]
+        });
       }
-
-      // Freezes: optional pauses where the target stays put
-      const freezes = [];
-      if (trial.freezeMinMs > 0 && trial.freezeMaxMs > 0) {
-        // Space a few freeze windows randomly over time
-        const approxCount = Math.max(0, Math.round(trial.duration_s * 1000 / ((trial.freezeMinMs + trial.freezeMaxMs) / 2 + 2500)));
-        let tf = 0;
-        for (let i = 0; i < approxCount; i++) {
-          tf += 1000 + Math.floor(rng() * 2500);
-          if (tf >= trial.duration_s * 1000) break;
-          const dur = trial.freezeMinMs + Math.floor(rng() * (trial.freezeMaxMs - trial.freezeMinMs));
-          freezes.push({ t_ms: tf, dur_ms: dur });
-          tf += dur;
-        }
-      }
-
-      // Jitters: brief perturbations in target position
-      const jitters = [];
-      for (let j = 0; j < trial.nJitters; j++) {
-        const jt = Math.floor(rng() * (trial.duration_s * 1000 - trial.jitterDurationMs));
-        const angle = rng() * Math.PI * 2;
-        const dx = Math.cos(angle) * trial.jitterMagnitudePx;
-        const dy = Math.sin(angle) * trial.jitterMagnitudePx;
-        jitters.push({ t_ms: jt, dur_ms: trial.jitterDurationMs, dx, dy });
-      }
-
-      return { switches, freezes, jitters, currentShape: 'circle' };
+      return { switches };
     }
-
-    /**
-     * ===== Motion Path =====
-     * Compute the target's ideal (x,y) at time t (seconds) given the path parameters.
-     * Includes freezes (hold position) and jitters (offset).
-     */
-    function computeTargetPosition(t, trial, schedules, startTimeMs, nowMs, lastPosCache) {
-      const cx = trial.canvasWidth / 2;
-      const cy = trial.canvasHeight / 2;
-      const R = Math.min(cx, cy) * 0.4;     // radius for circular path
-      const f = 0.25 * trial.velocity;      // base frequency (rev/s) scaled by 'velocity'
-
-      // Base trajectory
-      let baseX, baseY;
-
-      switch (trial.pathType) {
-        case 'circle':
-        default: {
-          const theta = 2 * Math.PI * f * t;
-          baseX = cx + R * Math.cos(theta);
-          baseY = cy + R * Math.sin(theta);
-          break;
-        }
-      }
-
-      // Apply freeze (if now is inside a freeze window)
-      let frozenX = baseX, frozenY = baseY;
-      if (schedules.freezes.length > 0) {
-        const elapsedMs = nowMs - startTimeMs;
-        for (const fr of schedules.freezes) {
-          if (elapsedMs >= fr.t_ms && elapsedMs < fr.t_ms + fr.dur_ms) {
-            // Hold last known position at freeze start
-            if (!fr._latched) {
-              fr._latched = true;
-              fr._x = (lastPosCache?.x ?? baseX);
-              fr._y = (lastPosCache?.y ?? baseY);
-            }
-            frozenX = fr._x;
-            frozenY = fr._y;
-            break;
-          } else if (fr._latched && elapsedMs >= fr.t_ms + fr.dur_ms) {
-            // Release after freeze window
-            fr._latched = false;
-          }
-        }
-      }
-
-      // Apply jitter offsets if inside a jitter window
-      let jx = 0, jy = 0;
-      if (schedules.jitters.length > 0) {
-        const elapsedMs = nowMs - startTimeMs;
-        for (const j of schedules.jitters) {
-          if (elapsedMs >= j.t_ms && elapsedMs < j.t_ms + j.dur_ms) {
-            jx += j.dx;
-            jy += j.dy;
-          }
-        }
-      }
-
-      return { x: frozenX + jx, y: frozenY + jy };
+    function computeTargetPosition(t, trial, schedules) {
+      const r = Math.min(trial.canvasWidth, trial.canvasHeight) / 3;
+      const x = trial.canvasWidth/2 + r * Math.cos(trial.velocity * t);
+      const y = trial.canvasHeight/2 + r * Math.sin(trial.velocity * t);
+      return {x, y};
     }
-
-    /**
-     * ===== Drawing =====
-     */
-    function clearCanvas(ctx) {
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    }
-
     function drawTarget(ctx, pos, shape) {
-      clearCanvas(ctx);
-      ctx.fillStyle = "#6cff9a";
-      ctx.beginPath();
-      if (shape === 'circle') {
-        ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2);
+      ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+      ctx.fillStyle = "red";
+      if (shape === "circle") {
+        ctx.beginPath();
+        ctx.arc(pos.x,pos.y,15,0,2*Math.PI);
         ctx.fill();
-      } else if (shape === 'triangle') {
-        ctx.moveTo(pos.x, pos.y - 14);
-        ctx.lineTo(pos.x - 12, pos.y + 10);
-        ctx.lineTo(pos.x + 12, pos.y + 10);
+      } else if (shape === "square") {
+        ctx.fillRect(pos.x-15,pos.y-15,30,30);
+      } else if (shape === "triangle") {
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y-20);
+        ctx.lineTo(pos.x-20, pos.y+20);
+        ctx.lineTo(pos.x+20, pos.y+20);
         ctx.closePath();
         ctx.fill();
-      } else {
-        // square
-        ctx.rect(pos.x - 12, pos.y - 12, 24, 24);
-        ctx.fill();
       }
     }
 
-    /**
-     * ===== Custom Rotor Plugin (jsPsych v8) =====
-     * - Class plugin with static info per v8 API
-     * - No external assets
-     * - Collects time series samples at fixed sampling interval
-     */
+    // --- Plugin definition ---
     class RotorPlugin {
       static info = {
         name: 'rotor',
-        version: '0.1.0',
         parameters: {
-          duration_s:       { type: jsPsych.ParameterType.INT,    default: 10 },
-          sampleMs:         { type: jsPsych.ParameterType.INT,    default: 20 },
-          canvasWidth:      { type: jsPsych.ParameterType.INT,    default: 800 },
-          canvasHeight:     { type: jsPsych.ParameterType.INT,    default: 600 },
-          pathType:         { type: jsPsych.ParameterType.STRING, default: "circle" },
-          velocity:         { type: jsPsych.ParameterType.FLOAT,  default: 1.0 },
-          complexity:       { type: jsPsych.ParameterType.INT,    default: 2 },   // reserved for future paths
-          nSwitches:        { type: jsPsych.ParameterType.INT,    default: 5 },
-          minSwitchMs:      { type: jsPsych.ParameterType.INT,    default: 800 },
-          maxSwitchMs:      { type: jsPsych.ParameterType.INT,    default: 1500 },
-          freezeMinMs:      { type: jsPsych.ParameterType.INT,    default: 0 },
-          freezeMaxMs:      { type: jsPsych.ParameterType.INT,    default: 0 },
-          nJitters:         { type: jsPsych.ParameterType.INT,    default: 0 },
-          jitterMagnitudePx:{ type: jsPsych.ParameterType.FLOAT,  default: 10 },
-          jitterDurationMs: { type: jsPsych.ParameterType.INT,    default: 120 },
-          seed:             { type: jsPsych.ParameterType.INT,    default: 42 },
-          participantId:    { type: jsPsych.ParameterType.STRING, default: "" },
-          conditionLabel:   { type: jsPsych.ParameterType.STRING, default: "" }
-        },
-        data: {
-          participantId:    { type: jsPsych.ParameterType.STRING },
-          conditionLabel:   { type: jsPsych.ParameterType.STRING },
-          samples:          { type: jsPsych.ParameterType.COMPLEX },  // array of time series samples
-          schedules:        { type: jsPsych.ParameterType.COMPLEX }   // switches/freezes/jitters actually used
+          duration_s: { type: "int", default: 10 },
+          sampleMs: { type: "int", default: 20 },
+          canvasWidth: { type: "int", default: 800 },
+          canvasHeight: { type: "int", default: 600 },
+          pathType: { type: "string", default: "circle" },
+          velocity: { type: "float", default: 1.0 },
+          complexity: { type: "int", default: 2 },
+          nSwitches: { type: "int", default: 5 },
+          minSwitchMs: { type: "int", default: 800 },
+          maxSwitchMs: { type: "int", default: 1500 },
+          freezeMinMs: { type: "int", default: 500 },
+          freezeMaxMs: { type: "int", default: 2000 },
+          nJitters: { type: "int", default: 0 },
+          jitterMagnitudePx: { type: "float", default: 10 },
+          jitterDurationMs: { type: "int", default: 100 },
+          seed: { type: "int", default: 42 },
+          participantId: { type: "string", default: "" },
+          conditionLabel: { type: "string", default: "" }
         }
       };
-
       constructor(jsPsych) {
         this.jsPsych = jsPsych;
       }
-
       trial(display_element, trial) {
-        // --- UI / Canvas ---
-        display_element.innerHTML = `
-          <div class="hud">
-            Keep the cursor on the moving target. Duration: ${trial.duration_s}s
-          </div>
-          <canvas id="rotor-canvas" width="${trial.canvasWidth}" height="${trial.canvasHeight}"></canvas>
-        `;
-        const canvas = display_element.querySelector('#rotor-canvas');
+        display_element.innerHTML =
+          `<canvas id="rotor-canvas" width="${trial.canvasWidth}" height="${trial.canvasHeight}"></canvas>`;
+        const canvas = document.getElementById('rotor-canvas');
         const ctx = canvas.getContext('2d');
 
-        // --- RNG & Schedules ---
         const rng = seededPRNG(trial.seed);
         const schedules = buildSchedules(trial, rng);
 
-        // --- Mouse tracking ---
-        const rect0 = canvas.getBoundingClientRect();
-        let mouse = { x: rect0.width/2, y: rect0.height/2 };
-        const updateMouse = (e) => {
+        let mouse = { x: trial.canvasWidth/2, y: trial.canvasHeight/2 };
+        canvas.addEventListener('mousemove', e => {
           const rect = canvas.getBoundingClientRect();
           mouse.x = e.clientX - rect.left;
           mouse.y = e.clientY - rect.top;
-        };
-        canvas.addEventListener('mousemove', updateMouse);
+        });
 
-        // --- Data collection ---
-        const samples = [];
-        const startTime = performance.now();
-        const endTime   = startTime + trial.duration_s * 1000;
+        let samples = [];
+        let startTime = performance.now();
+        let endTime = startTime + trial.duration_s * 1000;
         let nextSampleAt = startTime;
-        let lastPos = null;
 
-        // --- Animation loop ---
         const frame = (now) => {
           if (now >= endTime) {
             endTrial();
             return;
           }
-
-          // Update current shape by switch schedule
           let currentShape = 'circle';
-          for (const s of schedules.switches) {
-            if (now - startTime >= s.t_ms) currentShape = s.shape;
+          for (let s of schedules.switches) {
+            if (now - startTime >= s.t_ms) {
+              currentShape = s.shape;
+            }
           }
           schedules.currentShape = currentShape;
-
-          // Collect samples at fixed intervals
           while (now >= nextSampleAt && nextSampleAt <= endTime) {
             const t_ms = Math.round(nextSampleAt - startTime);
-            const pos = computeTargetPosition(t_ms / 1000, trial, schedules, startTime, nextSampleAt, lastPos);
+            const pos = computeTargetPosition(t_ms/1000, trial, schedules);
             const err = Math.hypot(mouse.x - pos.x, mouse.y - pos.y);
             samples.push({
-              t_ms,
-              targetX: pos.x, targetY: pos.y,
+              t_ms, targetX: pos.x, targetY: pos.y,
               mouseX: mouse.x, mouseY: mouse.y,
-              error_px: err,
-              shape: currentShape
+              error_px: err, shape: currentShape
             });
-            lastPos = pos;
             nextSampleAt += trial.sampleMs;
           }
-
-          // Draw current frame
-          const pos = computeTargetPosition((now - startTime) / 1000, trial, schedules, startTime, now, lastPos);
-          lastPos = pos;
+          const pos = computeTargetPosition((now-startTime)/1000, trial, schedules);
           drawTarget(ctx, pos, currentShape);
-
           requestAnimationFrame(frame);
         };
         requestAnimationFrame(frame);
 
-        // --- Trial end / cleanup ---
         const endTrial = () => {
-          canvas.removeEventListener('mousemove', updateMouse);
-          display_element.innerHTML = ''; // clear
+          display_element.innerHTML = '';
           this.jsPsych.finishTrial({
             participantId: trial.participantId,
             conditionLabel: trial.conditionLabel,
-            samples,
-            schedules
+            samples, schedules
           });
         };
       }
     }
+    jsPsych.plugins['rotor'] = RotorPlugin;
 
-    // We can reference the class directly in the timeline (v8 style).
-    // Also expose globally just in case you want to reuse elsewhere.
-    window.RotorPlugin = RotorPlugin;
-
-    /**
-     * ===== jsPsych init & Timeline =====
-     * Turn off WebAudio to avoid the browser "AudioContext must be resumed" warning.
-     */
+    // --- Initialize jsPsych ---
     const jsPsych = initJsPsych({
       display_element: 'jspsych-target',
-      use_webaudio: false,
-      on_finish: () => {
-        // Show all collected data in JSON (you can change to CSV if you like)
-        jsPsych.data.displayData('json');
-      }
+      on_finish: () => { jsPsych.data.displayData('json'); }
     });
 
-    // One demo trial — tweak these params as needed
-    const rotorTrial = {
+    const timeline = [{
       type: RotorPlugin,
-      duration_s: 10,
-      pathType: 'circle',
-      velocity: 1.0,
-      complexity: 2,            // reserved for future shapes/paths
-      nSwitches: 5,
-      minSwitchMs: 800,
-      maxSwitchMs: 1500,
-      freezeMinMs: 500,         // set to 0 to disable freeze windows
-      freezeMaxMs: 1500,
-      nJitters: 2,
-      jitterMagnitudePx: 20,
-      jitterDurationMs: 150,
-      sampleMs: 20,
-      canvasWidth: 800,
-      canvasHeight: 600,
-      seed: 12345,
-      participantId: "P01",
-      conditionLabel: "demo"
-    };
+      duration_s: 5,
+      participantId: "demo",
+      conditionLabel: "test"
+    }];
 
-    jsPsych.run([rotorTrial]);
+    jsPsych.run(timeline);
   </script>
 </body>
 </html>
