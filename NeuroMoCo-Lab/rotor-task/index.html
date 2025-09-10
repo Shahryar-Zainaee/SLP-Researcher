@@ -5,20 +5,25 @@
   <title>Pursuit Rotor Task — Demo Runner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- jsPsych v8.2.2 (local copy) -->
+  <!-- jsPsych v8.2.2 -->
   <script src="../jspsych/jspsych.js"></script>
   <link href="../jspsych/jspsych.css" rel="stylesheet" />
 
-  <!-- Custom helpers and plugin -->
+  <!-- jsPsych plugin: call-function -->
+  <script src="../jspsych/plugins/plugin-call-function.js"></script>
+
+  <!-- Your rotor utilities and plugin -->
   <script src="utils-rotor.js"></script>
   <script src="plugin-rotor.js"></script>
 
+  <!-- Styling -->
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="jspsych-target"></div>
 
   <script>
+    // Initialize jsPsych
     const jsPsych = initJsPsych({
       display_element: 'jspsych-target',
       on_finish: () => {
@@ -26,19 +31,21 @@
       }
     });
 
+    // Define trial using the call-function plugin
     const rotorTrial = {
-  type: jsPsychCallFunction,
-  async: true,
-  func: () => {
-    return new Promise(resolve => {
-      runRotorTask(data => {
-        resolve(data); // data is stored in jsPsych.data
-      });
-    });
-  }
-};
+      type: jsPsych.plugins['call-function'],
+      async: true,
+      func: () => {
+        return new Promise(resolve => {
+          runRotorTask(data => {
+            resolve(data); // stores rotor task samples/schedules in jsPsych.data
+          });
+        });
+      }
+    };
 
-jsPsych.run([rotorTrial]);
+    // Run experiment
+    jsPsych.run([rotorTrial]);
   </script>
 </body>
 </html>
