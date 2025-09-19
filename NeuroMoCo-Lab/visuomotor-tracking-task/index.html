@@ -1,1 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+  <meta charset="utf-8" />
+  <title>Adaptive Rotor Pursuit — Mouse Only (Full)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f1115;
+      --fg: #e7ecf5;
+      --muted: #9fb0c7;
+      --border: #243040;
+      --accent: #7aa2ff;
+      --target: #6cff9a;
+      --warn: #ffb86b;
+      --err: #ff6b6b;
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px
+    }
+
+    h1 {
+      font-size: 22px;
+      margin: 0 0 8px
+    }
+
+    p {
+      margin: 6px 0;
+      color: var(--muted)
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 8px 0 12px
+    }
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    input,
+    select,
+    textarea {
+      border: 1px solid var(--border);
+      background: #0b0e16;
+      color: var(--fg);
+      border-radius: 10px;
+      padding: 8px
+    }
+
+    input[type="number"] {
+      width: 120px
+    }
+
+    input[type="text"] {
+      width: 160px
+    }
+
+    select {
+      width: 200px
+    }
+
+    textarea {
+      width: 520px;
+      height: 60px
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: #111827;
+      color: var(--fg);
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed
+    }
+
+    .stack {
+      display: grid;
+      place-items: center
+    }
+
+    canvas {
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #0b0e16
+    }
+
+    .meta {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      flex-wrap: wrap
+    }
+
+    .badge {
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px
+    }
+
+    .pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 8px
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .ok {
+      color: #6cff9a
+    }
+
+    .warn {
+      color: var(--warn)
+    }
+
+    .err {
+      color: var(--err)
+    }
+
+    .refs {
+      margin-top: 16px;
+      font-size: 12px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 10px
+    }
+
+    .refs a {
+      color: var(--accent);
+      text-decoration: none
+    }
+
+    .prompt {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-align: center;
+      white-space: pre-line
+    }
+
+    .prompt.show {
+      display: flex
+    }
+
+    .settings {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 10px
+    }
+
+    .hideBtn {
+      margin-bottom: 10px
+    }
+
+    .controls {
+      margin: 12px 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1> Adaptive Rotor Pursuit Task - Modified </h1>
+
+
+    <!-- Toggle button to hide/show settings -->
+    <button id="toggleSettings" class="hideBtn">Hide Settings</button>
+    <div id="settingsPanel" class="settings">
+      <!-- Participant & canvas -->
+      <div class="row">
+        <label>Participant ID <input id="pid" type="text" placeholder="e.g., S01"></label>
+        <label>Condition <input id="cond" type="text" placeholder="e.g., Baseline"></label>
+        <label>Canvas (W×H)
+          <input id="cw" type="number" value="900">×<input id="ch" type="number" value="500">
+        </label>
+        <label>Target radius (px) <input id="dotR" type="number" value="12"></label>
+        <label>Hit radius (px) <input id="hitR" type="number" value="18"></label>
+      </div>
+
+      <!-- Timing & adaptation -->
+      <div class="row">
+        <label>Adapt duration (s) <input id="adaptDur" type="number" value="60"></label>
+        <label>Test duration (s) <input id="testDur" type="number" value="15"></label>
+        <label>Start ω (deg/s) <input id="startDeg" type="number" value="20"></label>
+        <label>Δω step (deg/s) <input id="stepDeg" type="number" value="5"></label>
+        <label>TOT criterion (%) <input id="crit" type="number" value="70"></label>
+        <label>Tolerance (±%) <input id="tol" type="number" value="5"></label>
+      </div>
+
+      <!-- Cognitive load & pedal -->
+      <div class="row">
+        <label>Cognitive load
+          <select id="cog">
+            <option value="least">Least (ignore colors)</option>
+            <option value="low">Low (press on BLUE)</option>
+            <option value="high">High (press on BLUE or YELLOW)</option>
+          </select>
+        </label>
+        <label>Pedal key
+          <select id="pedalKey">
+            <option value="Space">Space</option>
+            <option value="Enter">Enter</option>
+            <option value="ShiftLeft">Left Shift</option>
+            <option value="KeyF">F</option>
+          </select>
+        </label>
+        <span class="pill">Sampling: <span id="srBadge">60</span> Hz (per animation frame)</span>
+      </div>
+
+      <!-- Swallow control (global) -->
+      <div class="row">
+        <label>Swallowing
+          <select id="swallowMode">
+            <option value="off">OFF (no swallow)</option>
+            <option value="on" selected>ON (sip & swallow)</option>
+          </select>
+        </label>
+        <label>Swallow cue start (s)
+          <input id="swallowStart" type="number" value="6" step="0.1">
+        </label>
+        <label>Swallow cue end (s)
+          <input id="swallowEnd" type="number" value="8" step="0.1">
+        </label>
+        <span class="hint">Negative start = pre-trial cue (e.g., -2 → cue 2 s before start).</span>
+      </div>
+
+      <!-- Repetitions -->
+      <div class="row">
+        <label>Acclimation reps <input id="repAccl" type="number" min="0" value="3"></label>
+        <label>Adaptation reps <input id="repAdapt" type="number" min="0" value="1"></label>
+        <label>Test reps (per setting) <input id="repTest" type="number" min="0" value="1"></label>
+        <span class="hint">Test reps apply to each configured test (i.e., dual/single as you run them).</span>
+      </div>
+
+      <!-- Notes -->
+      <div class="row">
+        <label style="flex:1 1 640px">Notes (saved into CSV):
+          <textarea id="notes" placeholder="e.g., Booth display size; mouse type; participant notes"></textarea>
+        </label>
+      </div>
+    </div>
+
+    <!-- Controls outside settings panel -->
+    <div class="controls">
+      <button id="startAccl">Start Acclimation</button>
+      <button id="startAdapt">Start Adaptation</button>
+      <button id="startTest">Start Test Trials</button>
+      <button id="cancelBtn" disabled>Cancel</button>
+      <button id="dlSummary" disabled>Download Summary CSV</button>
+      <button id="dlSamples" disabled>Download Samples CSV</button>
+    </div>
+
+    <div class="stack" style="position:relative">
+      <canvas id="board" width="900" height="500"></canvas>
+      <div id="overlayPrompt" class="prompt"></div>
+    </div>
+
+    <div class="meta">
+      <div class="badge">Phase: <span id="phase">—</span></div>
+      <div class="badge">Trial: <span id="trial">—</span></div>
+      <div class="badge">ω (deg/s): <span id="omega">—</span></div>
+      <div class="badge">Time left: <span id="timeLeft">0.0</span>s</div>
+      <div class="badge">Window TOT: <span id="winTOT">—</span></div>
+      <div class="badge">Overall TOT: <span id="totAll">—</span></div>
+      <div class="badge">Color: <span id="colorNow">—</span></div>
+      <div class="badge">Pedal: <span id="pedalBadge">—</span></div>
+    </div>
+    <p id="status" class="hint"></p>
+
+    <div class="refs">
+      <b>References & Attribution.</b> Adaptive design aligned with <b>Whitfield, J. A., Holdosh, S. R., Kriegel, Z.,
+        Sullivan, L. E., & Fullenkamp, A. M. (2021)</b>. Tracking the costs of clear and loud speech: Interactions
+      between
+      speech motor control and concurrent visuomotor tracking. Journal of Speech, Language, and Hearing Research,
+      64(6S), 2182-2195.
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // How long to show the end-of-trial message
+const END_PROMPT_MS = 1500;
+
+      // =====================================================================
+      // UI helpers: hide/show settings panel
+      // =====================================================================
+      const toggleBtn = document.getElementById('toggleSettings');
+      const settingsPanel = document.getElementById('settingsPanel');
+      toggleBtn.addEventListener('click', () => {
+        if (settingsPanel.style.display === 'none') {
+          settingsPanel.style.display = 'block';
+          toggleBtn.textContent = 'Hide Settings';
+        } else {
+          settingsPanel.style.display = 'none';
+          toggleBtn.textContent = 'Show Settings';
+        }
+      });
+
+      // =====================================================================
+      // DOM bindings
+      // =====================================================================
+      const board = document.getElementById('board');
+      const ctx = board.getContext('2d');
+      const overlayPrompt = document.getElementById('overlayPrompt');
+
+      const phaseEl = document.getElementById('phase');
+      const trialEl = document.getElementById('trial');
+      const omegaEl = document.getElementById('omega');
+      const timeLeftEl = document.getElementById('timeLeft');
+      const winTOTEl = document.getElementById('winTOT');
+      const totAllEl = document.getElementById('totAll');
+      const colorNowEl = document.getElementById('colorNow');
+      const pedalBadgeEl = document.getElementById('pedalBadge');
+      const statusEl = document.getElementById('status');
+
+      const pidEl = document.getElementById('pid');
+      const condEl = document.getElementById('cond');
+      const cwEl = document.getElementById('cw');
+      const chEl = document.getElementById('ch');
+      const dotREl = document.getElementById('dotR');
+      const hitREl = document.getElementById('hitR');
+
+      const adaptDurEl = document.getElementById('adaptDur');
+      const testDurEl = document.getElementById('testDur');
+      const startDegEl = document.getElementById('startDeg');
+      const stepDegEl = document.getElementById('stepDeg');
+      const critEl = document.getElementById('crit');
+      const tolEl = document.getElementById('tol');
+
+      const cogEl = document.getElementById('cog');
+      const pedalKeyEl = document.getElementById('pedalKey');
+
+      const swallowModeEl = document.getElementById('swallowMode');
+      const swallowStartEl = document.getElementById('swallowStart');
+      const swallowEndEl = document.getElementById('swallowEnd');
+
+      const repAcclEl = document.getElementById('repAccl');
+      const repAdaptEl = document.getElementById('repAdapt');
+      const repTestEl = document.getElementById('repTest');
+
+      const notesEl = document.getElementById('notes');
+
+      const startAcclBtn = document.getElementById('startAccl');
+      const startAdaptBtn = document.getElementById('startAdapt');
+      const startTestBtn = document.getElementById('startTest');
+      const cancelBtn = document.getElementById('cancelBtn');
+      const dlSummaryBtn = document.getElementById('dlSummary');
+      const dlSamplesBtn = document.getElementById('dlSamples');
+
+      // =====================================================================
+      // Global state & config
+      // =====================================================================
+      const COLORS = ['red', 'white', 'orange', 'blue', 'green', 'brown', 'yellow'];
+      const TRIGGER_SECONDS = [6, 8, 10, 13]; // low/high load trigger seconds
+      const TWO_PI = Math.PI * 2;
+
+      let mouse = { x: board.width / 2, y: board.height / 2 };
+      board.addEventListener('mousemove', e => {
+        const r = board.getBoundingClientRect();
+        mouse.x = e.clientX - r.left;
+        mouse.y = e.clientY - r.top;
+      });
+
+      let running = false, raf = null;
+      let phase = '—';
+      let trialIndex = 0; // increases per repetition within a phase
+
+      // Motion parameters (continuous carry-over between trials)
+      let center = { x: board.width / 2, y: board.height / 2 };
+      let R = Math.min(board.width, board.height) * 0.35;
+      let theta = 0;                         // current angle (radians), NEVER reset across trials
+      let omega = 20 * Math.PI / 180;        // angular velocity (rad/s), changes with adaptation
+      let dotR = 12, hitR = 18;
+      let currentColor = 'white', lastColorChangeS = -1;
+
+      // Timing & counters
+      let phaseStartTime = 0, phaseEndTime = 0, lastFrameTs = 0;
+
+      // Adaptation bookkeeping (windowed TOT, overall TOT)
+      let adaptActiveWindow = null;          // { startS, endS }
+      let adaptHits = 0, adaptTotal = 0;     // window counts
+      let overallHits = 0, overallTotal = 0; // phase counts
+
+      // Cognitive load & pedal presses
+      let colorTimeline = [];                // [{t_s, color, isTrigger}]
+      let pedalPresses = [];                 // [{t_s, key, hit, falseAlarm}]
+      let lastPedalAt = -Infinity;
+
+      // Swallow cue timing (global ON/OFF, start/end seconds per trial)
+      let swallowCueStart = null;            // seconds relative to trial start (can be negative)
+      let swallowCueEnd = null;              // seconds relative to trial start
+      let swallowStartPlayed = false;
+      let swallowEndPlayed = false;
+
+      // CSV buffers
+      let summaryRows = [[
+        'ParticipantID', 'Condition', 'Phase', 'TrialIndex', 'CanvasW', 'CanvasH',
+        'DotR_px', 'HitR_px', 'Adapt_Start_deg_s', 'Step_deg_s', 'TOT_Criterion_pct', 'Tolerance_pct',
+        'Fixed_Omega_deg_s', 'Cognitive_Load', 'Pedal_Key', 'Swallow_Mode', 'SwallowStart_s', 'SwallowEnd_s', 'Notes',
+        'Phase_Duration_s', 'Overall_TOT_pct', 'BlueTimes_s', 'YellowTimes_s',
+        'Pedal_Hits', 'Pedal_FAs', 'Pedal_Misses', 'ISO_EndTime'
+      ]];
+      let sampleRows = [[
+        'ParticipantID', 'Condition', 'Phase', 'TrialIndex', 't_s',
+        'TargetX', 'TargetY', 'MouseX', 'MouseY', 'Err_px', 'Inside',
+        'Omega_deg_s', 'Color', 'PedalPress', 'ISO'
+      ]];
+
+      // =====================================================================
+      // Utility functions
+      // =====================================================================
+      const deg2rad = d => d * Math.PI / 180;
+      const rad2deg = r => r * 180 / Math.PI;
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const now = () => performance.now();
+      const fmt1 = x => Number.isFinite(x) ? x.toFixed(1) : '—';
+      function round(x, n) { return Number.isFinite(x) ? Number(x.toFixed(n)) : '' }
+
+      function csvEsc(s) { const t = String(s ?? ''); return /[\",\\n]/.test(t) ? '\"' + t.replace(/\"/g, '\"\"') + '\"' : t }
+      function toCSV(rows) { return rows.map(r => r.map(csvEsc).join(',')).join('\\n') }
+      function downloadCSV(name, text) {
+        const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click();
+        URL.revokeObjectURL(url); a.remove();
+      }
+
+      function setPrompt(text, show = true) { overlayPrompt.textContent = text; overlayPrompt.className = show ? 'prompt show' : 'prompt' }
+
+      // Audio cues (speech → fallback beep)
+      function speak(text) {
+        try { const u = new SpeechSynthesisUtterance(text); u.rate = 1; window.speechSynthesis.speak(u); }
+        catch { beep(); }
+      }
+      function beep(freq = 600, dur = 0.2) {
+        try {
+          const a = new (window.AudioContext || window.webkitAudioContext)();
+          const o = a.createOscillator(); const g = a.createGain();
+          o.type = 'sine'; o.frequency.value = freq; o.connect(g); g.connect(a.destination);
+          g.gain.setValueAtTime(0.001, a.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.2, a.currentTime + 0.01);
+          o.start(); o.stop(a.currentTime + dur);
+        } catch { }
+      }
+
+      // =====================================================================
+      // Drawing & sampling
+      // =====================================================================
+      function targetPos() { return { x: center.x + R * Math.cos(theta), y: center.y + R * Math.sin(theta) } }
+      function insideHit(mx, my, tx, ty) { return Math.hypot(mx - tx, my - ty) <= hitR }
+
+      function drawScene(tgt) {
+        ctx.clearRect(0, 0, board.width, board.height);
+        // mouse crosshair
+        ctx.globalAlpha = 0.8; ctx.strokeStyle = '#243040';
+        ctx.beginPath(); ctx.moveTo(mouse.x, 0); ctx.lineTo(mouse.x, board.height);
+        ctx.moveTo(0, mouse.y); ctx.lineTo(board.width, mouse.y); ctx.stroke();
+        // circular path
+        ctx.globalAlpha = 0.15; ctx.beginPath(); ctx.arc(center.x, center.y, R, 0, TWO_PI); ctx.stroke();
+        // target
+        ctx.globalAlpha = 1; ctx.fillStyle = currentColor;
+        ctx.beginPath(); ctx.arc(tgt.x, tgt.y, dotR, 0, TWO_PI); ctx.fill();
+        ctx.globalAlpha = 0.18; ctx.beginPath(); ctx.arc(tgt.x, tgt.y, hitR, 0, TWO_PI); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      function pushSampleRow(t_s, pos, ped = '') {
+        const pid = (pidEl.value || '').trim() || crypto.randomUUID().slice(0, 8);
+        const cond = (condEl.value || '').trim() || 'NA';
+        const err = Math.hypot(mouse.x - pos.x, mouse.y - pos.y);
+        const inside = +(err <= hitR);
+        sampleRows.push([
+          pid, cond, phase, trialIndex, round(t_s, 3),
+          round(pos.x, 2), round(pos.y, 2), round(mouse.x, 2), round(mouse.y, 2), round(err, 2), inside,
+          round(rad2deg(omega), 2), currentColor, ped, new Date().toISOString()
+        ]);
+        // counts
+        overallTotal++; if (inside) overallHits++;
+        if (phase === 'Adapt' && adaptActiveWindow) { adaptTotal++; if (inside) adaptHits++; }
+      }
+
+      // =====================================================================
+      // Cognitive load color schedule
+      // =====================================================================
+      function scheduleColors(phaseDur, mode) {
+        colorTimeline = [];
+        let prev = null;
+        const triggers = new Map();
+        if (mode === 'low') {
+          TRIGGER_SECONDS.forEach(s => triggers.set(s, { blue: true, yellow: false }));
+        } else if (mode === 'high') {
+          // assign either blue or yellow at each trigger, discourage strict alternation
+          let last = null;
+          TRIGGER_SECONDS.forEach(s => {
+            let pick = Math.random() < 0.5 ? 'blue' : 'yellow';
+            if (last && pick !== last && Math.random() < 0.6) { pick = last; }
+            triggers.set(s, { blue: pick === 'blue', yellow: pick === 'yellow' });
+            last = pick;
+          });
+        }
+        for (let s = 0; s < phaseDur; s++) {
+          // never repeat consecutively
+          const pool = COLORS.filter(c => c !== prev);
+          let c = pool[Math.floor(Math.random() * pool.length)];
+          const trg = triggers.get(s) || { blue: false, yellow: false };
+          if (trg.blue) c = 'blue';
+          if (trg.yellow) c = 'yellow';
+          colorTimeline.push({ t_s: s, color: c, isTrigger: (triggers.has(s)) });
+          prev = c;
+        }
+      }
+      function colorAt(t_s) {
+        const s = Math.max(0, Math.floor(t_s));
+        return colorTimeline[Math.min(s, colorTimeline.length - 1)]?.color || 'white';
+      }
+
+      // Pedal presses
+      window.addEventListener('keydown', (e) => {
+        if (!running) return;
+        const want = pedalKeyEl.value;
+        if (e.code === want) {
+          const t = (now() - phaseStartTime) / 1000;
+          if (t - lastPedalAt < 0.15) return; // debounce
+          lastPedalAt = t;
+          const s = Math.floor(t);
+          const expectedSecond = (s === 6 || s === 8 || s === 10 || s === 13);
+          let hit = false, fa = false;
+          if (cogEl.value === 'low') {
+            hit = expectedSecond && colorAt(t) === 'blue';
+            fa = !expectedSecond;
+          } else if (cogEl.value === 'high') {
+            const c = colorAt(t);
+            hit = expectedSecond && (c === 'blue' || c === 'yellow');
+            fa = !expectedSecond;
+          } else {
+            fa = true; // presses irrelevant in least mode (log as FA)
+          }
+          pedalPresses.push({ t_s: +t.toFixed(3), key: e.code, hit, falseAlarm: fa });
+          pedalBadgeEl.textContent = hit ? 'HIT' : (fa ? 'FA' : 'press');
+          // record a sample flag for convenience
+          const pos = targetPos();
+          pushSampleRow(t, pos, hit ? 'HIT' : (fa ? 'FA' : 'press'));
+        }
+      });
+
+      // =====================================================================
+      // Common helpers per phase
+      // =====================================================================
+      function setPhase(name) { phase = name; phaseEl.textContent = name; }
+      function resetForPhase() {
+        // NOTE: theta is NOT reset; motion stays continuous
+        overallHits = overallTotal = 0;
+        adaptHits = adaptTotal = 0;
+        adaptActiveWindow = null;
+        pedalPresses = [];
+        lastPedalAt = -Infinity;
+        currentColor = 'white'; lastColorChangeS = -1;
+        swallowStartPlayed = swallowEndPlayed = false;
+        colorTimeline = [];
+        timeLeftEl.textContent = '0.0';
+        winTOTEl.textContent = '—';
+        totAllEl.textContent = '—';
+        pedalBadgeEl.textContent = '—';
+      }
+      function updateCanvasSize() {
+        const w = clamp(parseInt(cwEl.value || '900', 10), 300, 1920);
+        const h = clamp(parseInt(chEl.value || '500', 10), 200, 1200);
+        board.width = w; board.height = h;
+        center = { x: w / 2, y: h / 2 };
+        R = Math.min(w, h) * 0.35;
+      }
+
+      // Adaptation window schedule utility (first 10s:1s, 10–30s:2s, rest:5s)
+      function windowSizeFor(t_s, total) {
+        if (t_s < 10) return 1;
+        if (t_s < 30) return 2;
+        return Math.min(5, Math.max(1, Math.floor((total - t_s) >= 5 ? 5 : (total - t_s))));
+      }
+
+      function finalizeSummary(duration_s) {
+        const pid = (pidEl.value || '').trim() || crypto.randomUUID().slice(0, 8);
+        const cond = (condEl.value || '').trim() || 'NA';
+        const fixedOmegaDeg = (phase === 'Adapt') ? '' : round(rad2deg(omega), 2);
+        const note = notesEl.value || '';
+        const overallTOTpct = overallTotal ? +(100 * overallHits / overallTotal).toFixed(1) : '';
+        const blueTimes = colorTimeline.filter(x => x.color === 'blue').map(x => x.t_s).join('|');
+        const yellowTimes = colorTimeline.filter(x => x.color === 'yellow').map(x => x.t_s).join('|');
+        const hits = pedalPresses.filter(p => p.hit).length;
+        const fas = pedalPresses.filter(p => p.falseAlarm).length;
+        let misses = 0;
+        if (cogEl.value === 'low' || cogEl.value === 'high') { misses = Math.max(0, 3 - hits); }
+        summaryRows.push([
+          pid, cond, phase, trialIndex, board.width, board.height,
+          dotR, hitR, parseFloat(startDegEl.value || '20'), parseFloat(stepDegEl.value || '5'),
+          parseFloat(critEl.value || '70'), parseFloat(tolEl.value || '5'),
+          fixedOmegaDeg, cogEl.value, pedalKeyEl.value, swallowModeEl.value,
+          swallowCueStart ?? '', swallowCueEnd ?? '', note,
+          duration_s, overallTOTpct, blueTimes, yellowTimes,
+          hits, fas, misses, new Date().toISOString()
+        ]);
+      }
+
+      // =====================================================================
+      // Phase runners
+      // =====================================================================
+
+      // Generic trial runner: handles color schedule, swallow cues (pre/post), timing loop, and drawing.
+      async function runTrial(duration_s, ruleText) {
+        resetForPhase();
+        dotR = clamp(parseInt(dotREl.value || '12', 10), 4, 40);
+        hitR = clamp(parseInt(hitREl.value || '18', 10), 6, 120);
+        scheduleColors(duration_s, cogEl.value);
+        // Phase prompt
+        setPrompt('Follow the rule:\n\n' + ruleText, true);
+        // Handle pre-trial swallow cue if enabled and start < 0
+        const startCue = parseFloat(swallowStartEl.value || '0');
+        const endCue = parseFloat(swallowEndEl.value || '15');
+        const swallowOn = (swallowModeEl.value === 'on');
+        swallowCueStart = swallowOn ? startCue : null;
+        swallowCueEnd = swallowOn ? endCue : null;
+
+        // If cue start is negative, play before starting the clock
+        if (swallowOn && startCue < 0) {
+          await waitSeconds(Math.abs(startCue));
+          speak('swallow'); setPrompt('SWALLOW', true);
+          setTimeout(() => setPrompt(''), 800);
+          swallowStartPlayed = true;
+        } else {
+          // keep the rule prompt up briefly
+          await waitSeconds(10);
+          setPrompt('', false);
+        }
+
+        // Start timing and loop
+        phaseStartTime = now();
+        phaseEndTime = phaseStartTime + duration_s * 1000;
+        lastFrameTs = phaseStartTime;
+
+        return new Promise(resolve => {
+          running = true; startButtonsRunning();
+          (function frameLoop(ts) {
+            if (!running) { resolve('canceled'); return; }
+            const t_s = (ts - phaseStartTime) / 1000;
+
+            // Swallow cue(s) during trial if enabled
+            if (swallowOn && !swallowStartPlayed && startCue >= 0 && t_s >= startCue) {
+              speak('swallow'); setPrompt('SWALLOW', true); setTimeout(() => setPrompt('', false), 800); swallowStartPlayed = true;
+            }
+            if (swallowOn && !swallowEndPlayed && isFinite(endCue) && t_s >= endCue) {
+              // optional end marker (tone only, no text)
+              beep(550, 0.15); swallowEndPlayed = true;
+            }
+
+            // Color update each whole second
+            if (Math.floor(t_s) !== lastColorChangeS) {
+              currentColor = colorAt(t_s); lastColorChangeS = Math.floor(t_s);
+            }
+
+            // Motion integration (theta carries over between trials)
+            theta += omega * ((ts - lastFrameTs) / 1000); lastFrameTs = ts;
+            const pos = targetPos();
+            drawScene(pos);
+            pushSampleRow(t_s, pos);
+
+            // HUD
+            omegaEl.textContent = round(rad2deg(omega), 1);
+            colorNowEl.textContent = currentColor;
+            timeLeftEl.textContent = fmt1(Math.max(0, (phaseEndTime - ts) / 1000));
+            totAllEl.textContent = overallTotal ? `${(100 * overallHits / overallTotal).toFixed(1)}%` : '—';
+
+
+            if (ts >= phaseEndTime){
+              running = false; startButtonsIdle();
+              setPrompt('Trial over', true);
+              setTimeout(()=>setPrompt('', false), END_PROMPT_MS);
+              resolve('done');
+              return;
+            }
+
+            raf = requestAnimationFrame(frameLoop);
+          })(phaseStartTime);
+        });
+      }
+
+      // Acclimation: repeats repAccl times, fixed speed (startDeg)
+      async function runAcclimation() {
+        setPhase('Acclimation');
+        const reps = clamp(parseInt(repAcclEl.value || '3', 10), 0, 99);
+        const dur = clamp(parseInt(testDurEl.value || '15', 10), 5, 600);
+        omega = deg2rad(parseFloat(startDegEl.value || '20'));
+        for (let i = 1; i <= reps; i++) {
+          trialIndex = i;
+          const rule = (swallowModeEl.value === 'on')
+            ? '[track + swallow]'
+            : '[track only (no swallow)]';
+          await runTrial(dur, rule);
+          finalizeSummary(dur);
+        }
+      }
+
+      // Adaptation: repeats repAdapt times, auto-adjust ω to hit 70%±tol
+      async function runAdaptation() {
+        setPhase('Adapt');
+        const reps = clamp(parseInt(repAdaptEl.value || '1', 10), 0, 99);
+        const dur = clamp(parseInt(adaptDurEl.value || '60', 10), 10, 900);
+        const crit = clamp(parseFloat(critEl.value || '70'), 1, 99);
+        const tol = clamp(parseFloat(tolEl.value || '5'), 0, 30);
+        const step = deg2rad(parseFloat(stepDegEl.value || '5'));
+        omega = deg2rad(parseFloat(startDegEl.value || '20'));
+
+        for (let i = 1; i <= reps; i++) {
+          trialIndex = i;
+          resetForPhase();
+          scheduleColors(dur, cogEl.value); // colors can still run; not vital for adapt
+          const rule = (swallowModeEl.value === 'on')
+            ? '[Sip & Swallw during this trial]'
+            : '[Do NOT Sip or Swallw during this trial]';
+          setPrompt('Follow the rule:\n\n' + rule, true); await waitSeconds(10); setPrompt('', false);
+
+          phaseStartTime = now();
+          phaseEndTime = phaseStartTime + dur * 1000;
+          lastFrameTs = phaseStartTime;
+          // init first window
+          adaptActiveWindow = { startS: 0, endS: windowSizeFor(0, dur) };
+          adaptHits = adaptTotal = 0;
+
+          await new Promise(resolve => {
+            running = true; startButtonsRunning();
+            (function frameLoop(ts) {
+              if (!running) { resolve('canceled'); return; }
+              const t_s = (ts - phaseStartTime) / 1000;
+
+              // color update (ignored for adapt)
+              if (Math.floor(t_s) !== lastColorChangeS) {
+                currentColor = colorAt(t_s); lastColorChangeS = Math.floor(t_s);
+              }
+
+              // motion
+              theta += omega * ((ts - lastFrameTs) / 1000); lastFrameTs = ts;
+              const pos = targetPos();
+              drawScene(pos);
+              pushSampleRow(t_s, pos);
+
+              // window logic
+              if (t_s >= adaptActiveWindow.endS || t_s >= dur) {
+                const windowTOT = adaptTotal ? (100 * adaptHits / adaptTotal) : 0;
+                winTOTEl.textContent = `${windowTOT.toFixed(1)}%`;
+                const upper = crit + tol, lower = crit - tol;
+                if (windowTOT > upper) { omega += step; }
+                else if (windowTOT < lower) { omega = Math.max(step, omega - step); }
+                // next window
+                const w = windowSizeFor(t_s, dur);
+                adaptActiveWindow = { startS: t_s, endS: t_s + w };
+                adaptHits = adaptTotal = 0;
+              }
+
+              // HUD
+              omegaEl.textContent = round(rad2deg(omega), 1);
+              timeLeftEl.textContent = fmt1(Math.max(0, (phaseEndTime - ts) / 1000));
+              totAllEl.textContent = overallTotal ? `${(100 * overallHits / overallTotal).toFixed(1)}%` : '—';
+
+            if (ts >= phaseEndTime){
+              running = false; startButtonsIdle();
+              setPrompt('Trial over', true);
+              setTimeout(()=>setPrompt('', false), END_PROMPT_MS);
+              resolve('done');
+              return;
+            }
+
+              raf = requestAnimationFrame(frameLoop);
+            })(phaseStartTime);
+          });
+
+          finalizeSummary(dur);
+        }
+      }
+
+      // Test trials: repeats repTest times at the current (fixed) ω (from end of adaptation or startDeg if no adapt)
+      async function runTests() {
+        setPhase('Test');
+        const reps = clamp(parseInt(repTestEl.value || '1', 10), 0, 99);
+        const dur = clamp(parseInt(testDurEl.value || '15', 10), 5, 600);
+        // If no prior adaptation was run, keep omega from startDeg
+        if (!isFinite(omega) || omega <= 0) { omega = deg2rad(parseFloat(startDegEl.value || '20')); }
+
+        for (let i = 1; i <= reps; i++) {
+          trialIndex = i;
+          const rule = (swallowModeEl.value === 'on')
+            ? '[Sip & Swallw during this trial]'
+            : '[Do NOT Sip or Swallw during this trial]';
+          await runTrial(dur, rule);
+          finalizeSummary(dur);
+        }
+      }
+
+      // =====================================================================
+      // Buttons & lifecycle
+      // =====================================================================
+      function waitSeconds(s) { return new Promise(r => setTimeout(r, s * 1000)); }
+
+      function startButtonsRunning() {
+        startAcclBtn.disabled = true; startAdaptBtn.disabled = true; startTestBtn.disabled = true;
+        cancelBtn.disabled = false; dlSummaryBtn.disabled = true; dlSamplesBtn.disabled = true;
+      }
+      function startButtonsIdle() {
+        cancelBtn.disabled = true; startAcclBtn.disabled = false; startAdaptBtn.disabled = false; startTestBtn.disabled = false;
+        const hasSummary = summaryRows.length > 1, hasSamples = sampleRows.length > 1;
+        dlSummaryBtn.disabled = !hasSummary; dlSamplesBtn.disabled = !hasSamples;
+      }
+      function cancelAll() {
+        if (!running) { startButtonsIdle(); return; }
+        running = false; if (raf) cancelAnimationFrame(raf);
+        statusEl.textContent = 'Canceled. Data up to cancel are preserved.';
+        setPrompt('', false);
+        startButtonsIdle();
+      }
+
+      startAcclBtn.addEventListener('click', async () => {
+        updateCanvasSize(); setPhase('Acclimation'); trialEl.textContent = '—';
+        await runAcclimation();
+        statusEl.textContent = 'Acclimation complete.';
+      });
+      startAdaptBtn.addEventListener('click', async () => {
+        updateCanvasSize(); setPhase('Adapt'); trialEl.textContent = '—';
+        await runAdaptation();
+        statusEl.textContent = 'Adaptation complete.';
+      });
+      startTestBtn.addEventListener('click', async () => {
+        updateCanvasSize(); setPhase('Test'); trialEl.textContent = '—';
+        await runTests();
+        statusEl.textContent = 'Tests complete.';
+      });
+      cancelBtn.addEventListener('click', cancelAll);
+
+      dlSummaryBtn.addEventListener('click', () => downloadCSV('rotor_summary.csv', toCSV(summaryRows)));
+      dlSamplesBtn.addEventListener('click', () => downloadCSV('rotor_samples.csv', toCSV(sampleRows)));
+
+      // =====================================================================
+      // Init on load
+      // =====================================================================
+      function init() {
+        dotR = clamp(parseInt(dotREl.value || '12', 10), 4, 40);
+        hitR = clamp(parseInt(hitREl.value || '18', 10), 6, 120);
+        updateCanvasSize();
+        const pos = targetPos();
+        drawScene(pos);
+        document.getElementById('srBadge').textContent = '60';
+      }
+      init();
+    })();
+  </script>
+</body>
+
+</html>
