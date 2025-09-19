@@ -390,12 +390,18 @@ const END_PROMPT_MS = 1500;
       const TRIGGER_SECONDS = [6, 8, 10, 13]; // low/high load trigger seconds
       const TWO_PI = Math.PI * 2;
 
-      let mouse = { x: board.width / 2, y: board.height / 2 };
-      board.addEventListener('mousemove', e => {
+      // Pointer-friendly tracking (works for mouse, touch, stylus)
+      let mouse = { x: board.width/2, y: board.height/2 };
+      board.addEventListener('pointermove', (e) => {
         const r = board.getBoundingClientRect();
         mouse.x = e.clientX - r.left;
         mouse.y = e.clientY - r.top;
       });
+      board.addEventListener('pointerdown', (e) => {
+        // capture pointer for consistent events during touch
+        try { board.setPointerCapture(e.pointerId); } catch {}
+      });
+
 
       let running = false, raf = null;
       let phase = '—';
@@ -727,8 +733,8 @@ const END_PROMPT_MS = 1500;
         for (let i = 1; i <= reps; i++) {
           trialIndex = i;
           const rule = (swallowModeEl.value === 'on')
-            ? '[track + swallow]'
-            : '[track only (no swallow)]';
+            ? '[track]'
+            : '[track]';
           await runTrial(dur, rule);
           finalizeSummary(dur);
         }
@@ -749,8 +755,8 @@ const END_PROMPT_MS = 1500;
           resetForPhase();
           scheduleColors(dur, cogEl.value); // colors can still run; not vital for adapt
           const rule = (swallowModeEl.value === 'on')
-            ? '[Sip & Swallw during this trial]'
-            : '[Do NOT Sip or Swallw during this trial]';
+            ? '[track]'
+            : '[track]';
           setPrompt('Follow the rule:\n\n' + rule, true); await waitSeconds(10); setPrompt('', false);
 
           phaseStartTime = now();
@@ -822,8 +828,8 @@ const END_PROMPT_MS = 1500;
         for (let i = 1; i <= reps; i++) {
           trialIndex = i;
           const rule = (swallowModeEl.value === 'on')
-            ? '[Sip & Swallw during this trial]'
-            : '[Do NOT Sip or Swallw during this trial]';
+            ? '[track + Sip & Swallw]'
+            : '[track only (no Sip & Swallw)]';
           await runTrial(dur, rule);
           finalizeSummary(dur);
         }
