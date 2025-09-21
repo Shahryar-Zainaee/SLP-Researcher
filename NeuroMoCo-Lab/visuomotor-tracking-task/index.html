@@ -215,6 +215,7 @@
         <label>Δω step (deg/s) <input id="stepDeg" type="number" value="5"></label>
         <label>TOT criterion (%) <input id="crit" type="number" value="70"></label>
         <label>Tolerance (±%) <input id="tol" type="number" value="5"></label>
+        <label>Written instruction display (s) <input id="instrDur" type="number" value="3" step="0.5"></label>
       </div>
       <div class="row">
         <label>Cognitive load
@@ -250,6 +251,7 @@
         </label>
         <label>Swallow cue start (s) <input id="swallowStart" type="number" value="0" step="0.1"></label>
         <label>Swallow cue end (s) <input id="swallowEnd" type="number" value="15" step="0.1"></label>
+        <label>Swallow prompt repeat interval (s) <input id="swallowRepeat" type="number" value="5" step="0.5"></label>
         <span class="hint">Negative start = pre-trial cue (e.g., -2 → cue 2 s before start).</span>
       </div>
       <div class="row">
@@ -338,11 +340,14 @@
       const stepDegEl = document.getElementById('stepDeg');
       const critEl = document.getElementById('crit');
       const tolEl = document.getElementById('tol');
+      const instrDurEl = document.getElementById('instrDur');
+
 
       const cogEl = document.getElementById('cog');
       const motorLoadEl = document.getElementById('motorLoad');
       const pedalKeyEl = document.getElementById('pedalKey');
 
+      const swallowRepeatEl = document.getElementById('swallowRepeat');
       const swallowModeEl = document.getElementById('swallowMode');
       const swallowStartEl = document.getElementById('swallowStart');
       const swallowEndEl = document.getElementById('swallowEnd');
@@ -579,19 +584,25 @@
         hitR = clamp(parseInt(hitREl.value || '18', 10), 6, 120);
         scheduleColors(duration_s, cogEl.value);
         setPrompt('Follow the rule: \n\n' + ruleText, true);
+
         const startCue = parseFloat(swallowStartEl.value || '0');
         const endCue = parseFloat(swallowEndEl.value || '15');
         const swallowOn = (swallowModeEl.value === 'on');
         swallowCueStart = swallowOn ? startCue : null;
         swallowCueEnd = swallowOn ? endCue : null;
 
+        // how often to repeat the prompt (seconds)
+        const repeatInterval = parseFloat(swallowRepeatEl.value || '5');
+        let nextSwallowAt = startCue;
+
         if (swallowOn && startCue < 0) {
           await waitSeconds(Math.abs(startCue));
-          speak('swallow'); setPrompt('SWALLOW', true);
+          speak('sip and swallow');
+          setPrompt(' ', true);
           setTimeout(() => setPrompt('', false), 800);
-          swallowStartPlayed = true;
+          nextSwallowAt = repeatInterval; // schedule next repeat
         } else {
-          await waitSeconds(7);
+          await waitSeconds(parseFloat(instrDurEl.value || '5'));
           setPrompt('', false);
         }
 
@@ -605,16 +616,21 @@
             if (!running) { resolve('canceled'); return; }
             const t_s = (ts - phaseStartTime) / 1000;
 
-            if (swallowOn && !swallowStartPlayed && startCue >= 0 && t_s >= startCue) {
-              speak('swallow'); setPrompt('SWALLOW', true); setTimeout(() => setPrompt('', false), 800); swallowStartPlayed = true;
-            }
-            if (swallowOn && !swallowEndPlayed && isFinite(endCue) && t_s >= endCue) {
-              beep(550, 0.15); swallowEndPlayed = true;
+            // repeat swallow prompt
+            if (swallowOn && t_s >= nextSwallowAt && t_s <= endCue) {
+              speak('sip and swallow');
+              setPrompt(' ', true);
+              setTimeout(() => setPrompt('', false), 800);
+              nextSwallowAt += repeatInterval; // schedule next one
             }
 
-            if (Math.floor(t_s) !== lastColorChangeS) { currentColor = colorAt(t_s); lastColorChangeS = Math.floor(t_s); }
+            if (Math.floor(t_s) !== lastColorChangeS) {
+              currentColor = colorAt(t_s);
+              lastColorChangeS = Math.floor(t_s);
+            }
 
-            theta += omega * ((ts - lastFrameTs) / 1000); lastFrameTs = ts;
+            theta += omega * ((ts - lastFrameTs) / 1000);
+            lastFrameTs = ts;
             const pos = targetPos();
             drawScene(pos);
             pushSampleRow(t_s, pos);
@@ -635,6 +651,7 @@
         });
       }
 
+
       async function runAcclimation() {
         setPhase('Acclimation');
         const reps = clamp(parseInt(repAcclEl.value || '3', 10), 0, 99);
@@ -642,8 +659,8 @@
         omega = deg2rad(parseFloat(startDegEl.value || '20'));
         for (let i = 1; i <= reps; i++) {
           trialIndex = i;
-          const label = motorLoadEl.options[motorLoadEl.selectedIndex].text.split(' ')[0];
-          const rule = (swallowModeEl.value === 'on') ? `[track @ ${label}]` : `[track @ ${label}]`;
+          omega = baseOmega * motorFactor();
+          const rule = (swallowModeEl.value === 'on') ? `[track + swallow]` : `[track only]`;
           await runTrial(dur, rule);
           finalizeSummary(dur);
         }
@@ -662,7 +679,7 @@
           trialIndex = i;
           resetForPhase();
           scheduleColors(dur, cogEl.value);
-          setPrompt('Follow the rule: \n\n[track]', true); await waitSeconds(1.2); setPrompt('', false);
+          setPrompt('Follow the rule: \n\n[track]', true); await waitSeconds(parseFloat(instrDurEl.value || '3')); setPrompt('', false);
 
           phaseStartTime = now();
           phaseEndTime = phaseStartTime + dur * 1000;
@@ -719,10 +736,9 @@
 
         for (let i = 1; i <= reps; i++) {
           trialIndex = i;
-          const label = motorLoadEl.options[motorLoadEl.selectedIndex].text.split(' ')[0];
-          omega = baseOmega * motorFactor();
-          const rule = (swallowModeEl.value === 'on') ? `[track + swallow @ ${label}]` : `[track only @ ${label}]`;
+          const rule = (swallowModeEl.value === 'on') ? `[track + swallow]` : `[track only]`;
           await runTrial(dur, rule);
+
           finalizeSummary(dur);
         }
       }
